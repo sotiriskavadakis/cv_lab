@@ -39,6 +39,29 @@ def gaussian_kernel(sigma: float) -> np.ndarray:
     return (g1d @ g1d.T).astype(np.float64)
 
 
+def log_kernel(sigma: float) -> np.ndarray:
+    """Return the LoG kernel using the same direct formula as Part 1."""
+    if sigma <= 0:
+        raise ValueError("sigma must be positive.")
+
+    n = int(np.ceil(3 * sigma) * 2 + 1)
+    x, y = np.meshgrid(
+        np.arange(-n // 2, n // 2 + 1),
+        np.arange(-n // 2, n // 2 + 1),
+    )
+
+    r_squared = x**2 + y**2
+    sigma_squared = sigma**2
+
+    kernel = (
+        (r_squared - 2 * sigma_squared)
+        / (2 * np.pi * sigma_squared**3)
+        * np.exp(-r_squared / (2 * sigma_squared))
+    )
+    kernel -= kernel.mean()
+    return kernel.astype(np.float64)
+
+
 def ensure_gray_float(I: np.ndarray) -> np.ndarray:
     """Convert an input image to a single-channel float64 intensity image."""
     if I.ndim == 3:
@@ -172,6 +195,162 @@ def detect_harris_corners(
 
 
 # ============================================================
+# Part 2.2.1 - Build the multi-scale Harris representation
+# ============================================================
+# Paper scale sequence:
+#   sigma_i = (s ** i) * sigma_0,   i = 0, ..., N - 1
+#   rho_i   = (s ** i) * rho_0,     i = 0, ..., N - 1
+# where sigma_0, rho_0 are the initial scales, s is the scale step,
+# and N is the number of scales.
+
+
+def build_scale_sequence(
+    sigma_0: float = 2.0, rho_0: float = 2.5, s: float = 1.5, N: int = 4
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the differentiation and integration scales for Part 2.2.1."""
+    if sigma_0 <= 0 or rho_0 <= 0:
+        raise ValueError("sigma_0 and rho_0 must be positive.")
+    if s <= 1.0:
+        raise ValueError("s must be greater than 1.")
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    indices = np.arange(N, dtype=np.float64)
+    sigma_values = sigma_0 * (s ** indices)
+    rho_values = rho_0 * (s ** indices)
+    return sigma_values, rho_values
+
+
+def detect_harris_corners_multiscale(
+    I: np.ndarray,
+    sigma_0: float = 2.0,
+    rho_0: float = 2.5,
+    s: float = 1.5,
+    N: int = 4,
+    k: float = 0.05,
+    theta_corn: float = 0.005,
+) -> list[dict]:
+    """
+    Part 2.2.1 implementation.
+
+    Build the Harris responses and corner detections across N scales.
+    This subsection prepares the multi-scale representation only.
+    Scale selection with LoG is added in Part 2.2.2.
+    """
+    # 2.2.1(a): Generate the scale sequence sigma_i and rho_i.
+    sigma_values, rho_values = build_scale_sequence(
+        sigma_0=sigma_0, rho_0=rho_0, s=s, N=N
+    )
+
+    scale_results: list[dict] = []
+
+    # 2.2.1(b): Run the Harris detector independently at each scale level.
+    for i, (sigma_i, rho_i) in enumerate(zip(sigma_values, rho_values)):
+        R_i, corners_i = detect_harris_corners(
+            I,
+            sigma=float(sigma_i),
+            rho=float(rho_i),
+            k=k,
+            theta_corn=theta_corn,
+        )
+        scale_results.append(
+            {
+                "scale_index": i,
+                "sigma": float(sigma_i),
+                "rho": float(rho_i),
+                "R": R_i,
+                "corners": corners_i,
+            }
+        )
+
+    return scale_results
+
+
+# ============================================================
+# Part 2.2.2 - Select characteristic scale with normalized LoG
+# ============================================================
+# Paper equation:
+#   |LoG(x, i)| = sigma_i^2 * |Lxx(x, i) + Lyy(x, i)|,  i = 0, ..., N - 1
+# Harris-Laplacian selection:
+#   keep Harris points whose normalized LoG response is maximal across scale.
+
+
+def compute_normalized_log_response(I: np.ndarray, sigma: float) -> np.ndarray:
+    """Compute the scale-normalized LoG magnitude using the Part 1 LoG kernel."""
+    I_gray = ensure_gray_float(I)
+
+    # 2.2.2(a): Build the Laplacian-of-Gaussian kernel at scale sigma.
+    LoG_sigma = log_kernel(sigma)
+
+    # 2.2.2(b): Convolve the image with the LoG kernel, as in Part 1.
+    log_response = convolve(I_gray, LoG_sigma)
+
+    # 2.2.2(c): Form the normalized LoG magnitude sigma^2 * |LoG|.
+    return (sigma**2) * np.abs(log_response)
+
+
+def select_harris_laplacian_points(
+    scale_results: list[dict], I: np.ndarray
+) -> tuple[list[dict], np.ndarray]:
+    """
+    Part 2.2.2 implementation.
+
+    For each Harris point detected at scale i, keep it only if its normalized LoG
+    response is a local maximum over the neighboring scales i-1, i, i+1.
+
+    Returns:
+      updated_scale_results: same per-scale data with LoG responses attached
+      selected_points: Nx3 array with columns [x, y, sigma]
+    """
+    if not scale_results:
+        return scale_results, np.empty((0, 3), dtype=np.float64)
+
+    # 2.2.2(d): Compute the normalized LoG response image at every scale.
+    log_responses = [
+        compute_normalized_log_response(I, scale_result["sigma"])
+        for scale_result in scale_results
+    ]
+
+    for scale_result, log_response in zip(scale_results, log_responses):
+        scale_result["LoG"] = log_response
+
+    selected_points: list[list[float]] = []
+
+    # 2.2.2(e): Keep only points that are scale-space maxima of the LoG response.
+    for i, scale_result in enumerate(scale_results):
+        corners_i = scale_result["corners"]
+        if len(corners_i) == 0:
+            continue
+
+        log_i = log_responses[i]
+        log_prev = log_responses[i - 1] if i > 0 else None
+        log_next = log_responses[i + 1] if i < len(log_responses) - 1 else None
+
+        selected_at_scale: list[list[float]] = []
+        for x, y, sigma_i in corners_i:
+            x_int = int(round(x))
+            y_int = int(round(y))
+            value = log_i[y_int, x_int]
+
+            prev_ok = log_prev is None or value >= log_prev[y_int, x_int]
+            next_ok = log_next is None or value >= log_next[y_int, x_int]
+
+            if prev_ok and next_ok:
+                point = [float(x), float(y), float(sigma_i)]
+                selected_at_scale.append(point)
+                selected_points.append(point)
+
+        scale_result["selected_corners"] = np.array(selected_at_scale, dtype=np.float64)
+
+    if selected_points:
+        selected_points_array = np.array(selected_points, dtype=np.float64)
+    else:
+        selected_points_array = np.empty((0, 3), dtype=np.float64)
+
+    return scale_results, selected_points_array
+
+
+# ============================================================
 # Visualization helper for Part 2.1.1
 # ============================================================
 
@@ -291,7 +470,129 @@ def run_2_1_3_demo() -> None:
         plt.show()
 
 
+# ============================================================
+# Visualization helper for Part 2.2.1
+# ============================================================
+
+
+def run_2_2_1_demo() -> None:
+    """Visualize Harris corners across the scale sequence of Part 2.2.1."""
+    sigma_0 = 2.0
+    rho_0 = 2.5
+    s = 1.5
+    N = 4
+    k = 0.05
+    theta_corn = 0.005
+
+    for name in ["solar.jpg", "blood_cells.jpg"]:
+        path = os.path.join(DATA_DIR, name)
+        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
+        if I_color is None:
+            raise FileNotFoundError(f"Could not load '{name}'.")
+
+        I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
+        scale_results = detect_harris_corners_multiscale(
+            I_color,
+            sigma_0=sigma_0,
+            rho_0=rho_0,
+            s=s,
+            N=N,
+            k=k,
+            theta_corn=theta_corn,
+        )
+
+        fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
+        fig.suptitle(
+            f"Part 2.2.1 - {name} (sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N})",
+            fontsize=13,
+            fontweight="bold",
+        )
+
+        for ax_col, scale_result in enumerate(scale_results):
+            R_i = scale_result["R"]
+            corners_i = scale_result["corners"]
+            sigma_i = scale_result["sigma"]
+            rho_i = scale_result["rho"]
+
+            axes[0, ax_col].imshow(R_i, cmap="gray")
+            axes[0, ax_col].set_title(f"R, i={ax_col}\nsigma={sigma_i:.2f}, rho={rho_i:.2f}")
+            axes[0, ax_col].axis("off")
+
+            interest_points_visualization(I_rgb, corners_i, ax=axes[1, ax_col])
+            axes[1, ax_col].set_title(f"Corners: {len(corners_i)}")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
+        plt.show()
+
+
+# ============================================================
+# Visualization helper for Part 2.2.2
+# ============================================================
+
+
+def run_2_2_2_demo() -> None:
+    """Visualize Harris-Laplacian points after scale selection."""
+    sigma_0 = 2.0
+    rho_0 = 2.5
+    s = 1.5
+    N = 4
+    k = 0.05
+    theta_corn = 0.005
+
+    for name in ["solar.jpg", "blood_cells.jpg"]:
+        path = os.path.join(DATA_DIR, name)
+        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
+        if I_color is None:
+            raise FileNotFoundError(f"Could not load '{name}'.")
+
+        I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
+        scale_results = detect_harris_corners_multiscale(
+            I_color,
+            sigma_0=sigma_0,
+            rho_0=rho_0,
+            s=s,
+            N=N,
+            k=k,
+            theta_corn=theta_corn,
+        )
+        scale_results, selected_points = select_harris_laplacian_points(
+            scale_results, I_color
+        )
+
+        fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
+        fig.suptitle(
+            f"Part 2.2.2 - {name} (sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N})",
+            fontsize=13,
+            fontweight="bold",
+        )
+
+        for ax_col, scale_result in enumerate(scale_results):
+            axes[0, ax_col].imshow(scale_result["LoG"], cmap="gray")
+            axes[0, ax_col].set_title(
+                f"|LoG|, i={ax_col}\nsigma={scale_result['sigma']:.2f}"
+            )
+            axes[0, ax_col].axis("off")
+
+            selected = scale_result.get(
+                "selected_corners", np.empty((0, 3), dtype=np.float64)
+            )
+            interest_points_visualization(I_rgb, selected, ax=axes[1, ax_col])
+            axes[1, ax_col].set_title(f"Selected: {len(selected)}")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
+        plt.show()
+
+        fig2, ax2 = plt.subplots(figsize=(7, 5))
+        fig2.suptitle(f"Part 2.2.2 - Final Harris-Laplacian points on {name}")
+        interest_points_visualization(I_rgb, selected_points, ax=ax2)
+        ax2.set_title(f"Total selected points: {len(selected_points)}")
+        plt.tight_layout()
+        plt.show()
+
+
 if __name__ == "__main__":
     run_2_1_1_demo()
     run_2_1_2_demo()
     run_2_1_3_demo()
+    run_2_2_1_demo()
+    run_2_2_2_demo()
