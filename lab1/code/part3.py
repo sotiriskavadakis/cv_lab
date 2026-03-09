@@ -9,7 +9,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import seaborn as sns
 import random
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'part3')
@@ -70,6 +73,16 @@ accuracy = accuracy_score(y_test, y_pred)
 conf_matrix = confusion_matrix(y_test, y_pred)
 print(f"CNN (MobileNetV3) + SVM accuracy: {accuracy*100:.2f}%")
 print(f"Confusion matrix:\n{conf_matrix}")
+
+fig, ax = plt.subplots(figsize=(5, 4))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
+            xticklabels=classes, yticklabels=classes, ax=ax)
+ax.set_xlabel('Predicted')
+ax.set_ylabel('True')
+ax.set_title(f'Confusion Matrix — MobileNet + SVM ({accuracy*100:.2f}%)')
+plt.tight_layout()
+plt.savefig('confusion_matrix.jpg', dpi=150, bbox_inches='tight')
+plt.show()
 
 # 3.2.4 Visualize feature maps from intermediate layers
 
@@ -165,3 +178,129 @@ imgs_rot,   lbls_rot   = load_and_augment(augment_fn=random_rotation)
 
 evaluate_pipeline(imgs_noise, lbls_noise, "Gaussian noise")
 evaluate_pipeline(imgs_rot,   lbls_rot,   "Random rotation")
+
+# 3.2.5b Robustness curve: accuracy vs noise level
+# Sweeps Gaussian noise std over 10 levels → shows at which point the CNN starts to fail
+
+noise_levels = np.linspace(0.0, 1.0, 10)
+noise_accuracies = []
+
+# Pre-load images once, apply noise in-memory each iteration
+base_imgs, base_lbls = load_and_augment(augment_fn=None)
+
+for std in noise_levels:
+    imgs = [add_gaussian_noise(img, std) if std > 0.0 else img for img in base_imgs]
+
+    feats = []
+    with torch.no_grad():
+        for img in imgs:
+            out = feature_extractor(img.unsqueeze(0))
+            feats.append(out['avgpool'].squeeze().numpy())
+    feats = np.array(feats)
+
+    Xtr, Xte, ytr, yte = train_test_split(feats, base_lbls, test_size=0.3,
+                                           random_state=42, stratify=base_lbls)
+    sc = StandardScaler()
+    Xtr = sc.fit_transform(Xtr)
+    Xte = sc.transform(Xte)
+
+    clf = SVC(kernel='rbf', C=10, gamma='scale', decision_function_shape='ovr')
+    clf.fit(Xtr, ytr)
+    noise_accuracies.append(accuracy_score(yte, clf.predict(Xte)) * 100)
+    print(f"  noise std={std:.2f} → {noise_accuracies[-1]:.2f}%")
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.plot(noise_levels, noise_accuracies, marker='o', linewidth=2, color='#e74c3c')
+ax.axhline(y=noise_accuracies[0], linestyle='--', color='gray', alpha=0.6, label='No noise baseline')
+ax.set_xlabel('Gaussian noise std')
+ax.set_ylabel('Accuracy (%)')
+ax.set_title('Robustness of MobileNet+SVM to Gaussian Noise')
+ax.legend()
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig('robustness_curve.jpg', dpi=150, bbox_inches='tight')
+plt.show()
+
+# 3.2.6 t-SNE visualization of avgpool features
+# Shows why CNN+SVM works: well-separated clusters → easy hyperplane for SVM
+
+colors = ['#e74c3c', '#3498db', '#2ecc71']
+
+n_pca = min(50, features.shape[1], features.shape[0] - 1)
+pca_feats = PCA(n_components=n_pca).fit_transform(features)
+pca_2d    = PCA(n_components=2).fit_transform(features)
+
+tsne = TSNE(n_components=2, perplexity=min(30, len(features) // 3),
+            random_state=42, max_iter=1000)
+embedded = tsne.fit_transform(pca_feats)
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+for ax, proj, title, xlabel, ylabel in [
+    (axes[0], pca_2d,  'PCA (linear)',  'PC 1',        'PC 2'),
+    (axes[1], embedded,'t-SNE (non-linear)', 't-SNE dim 1', 't-SNE dim 2'),
+]:
+    for label, cls, color in zip(range(len(classes)), classes, colors):
+        mask = labels == label
+        ax.scatter(proj[mask, 0], proj[mask, 1],
+                   c=color, label=cls, s=60, alpha=0.85, edgecolors='white', linewidths=0.5)
+    ax.legend(fontsize=11)
+    ax.set_title(f'{title}\nMobileNetV3-Small avgpool features (576-dim → 2-dim)', fontsize=12)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('tsne_pca_features.jpg', dpi=150, bbox_inches='tight')
+plt.show()
+
+# 3.2.7 Fine-tuning: unfreeze last 3 blocks of MobileNet + 3-class head
+# Compare against frozen feature extractor + SVM (3.2.3)
+
+import copy
+
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+print(f"Fine-tuning on: {device}")
+
+ft_model = copy.deepcopy(model).to(device)
+
+for param in ft_model.parameters():
+    param.requires_grad = False
+for param in ft_model.features[9:].parameters():
+    param.requires_grad = True
+ft_model.classifier[-1] = torch.nn.Linear(1024, len(classes)).to(device)
+
+idx = np.arange(len(images))
+idx_train, idx_test = train_test_split(idx, test_size=0.3, random_state=42, stratify=labels)
+
+X_ft = torch.stack(images)                     # (N, 3, H, W)
+y_ft = torch.tensor(labels, dtype=torch.long)
+
+optimizer = torch.optim.Adam(
+    filter(lambda p: p.requires_grad, ft_model.parameters()), lr=1e-4
+)
+criterion = torch.nn.CrossEntropyLoss()
+
+BATCH = 32
+EPOCHS = 20
+train_idx_tensor = torch.tensor(idx_train)
+
+ft_model.train()
+for epoch in range(EPOCHS):
+    perm = train_idx_tensor[torch.randperm(len(train_idx_tensor))]
+    for start in range(0, len(perm), BATCH):
+        batch_idx = perm[start:start + BATCH]
+        x = X_ft[batch_idx].to(device)
+        y = y_ft[batch_idx].to(device)
+        optimizer.zero_grad()
+        criterion(ft_model(x), y).backward()
+        optimizer.step()
+    if (epoch + 1) % 5 == 0:
+        print(f"  epoch {epoch+1}/{EPOCHS} done")
+
+ft_model.eval()
+with torch.no_grad():
+    preds = ft_model(X_ft[idx_test].to(device)).argmax(dim=1).cpu()
+ft_acc = (preds == y_ft[idx_test]).float().mean().item()
+
+print(f"\nFrozen MobileNet + SVM accuracy : {accuracy*100:.2f}%")
+print(f"Fine-tuned MobileNet accuracy   : {ft_acc*100:.2f}%")
