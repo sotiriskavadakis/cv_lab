@@ -1,0 +1,11 @@
+# macOS metadata
+.DS_Store
+
+# Generated output images
+feature_maps_*.jpg
+gradcam_*.jpg
+
+# Dataset images
+data/part3/**/*.jpg
+data/part3/**/*.jpeg
+data/part3/**/*.png

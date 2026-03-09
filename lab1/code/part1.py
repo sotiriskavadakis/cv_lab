@@ -196,6 +196,41 @@ for img, label, sigma, theta_edge in experiments:
 
     plt.show()
 
+# 1.3.4 Precision-Recall Curves over theta_edge sweep
+
+theta_values = np.linspace(0.01, 0.99, 50)
+
+pr_experiments = [
+    (I_20, 'PSNR=20dB', 1.5),
+    (I_10, 'PSNR=10dB', 3.0),
+]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+fig.suptitle('Precision-Recall Curves', fontsize=14, fontweight='bold')
+
+for ax, (img, label, sigma) in zip(axes, pr_experiments):
+    for lap_type, color in [('linear', 'blue'), ('nonlinear', 'orange')]:
+        precisions, recalls = [], []
+        for theta in theta_values:
+            D = EdgeDetect(img, sigma, theta, laplacian_type=lap_type)
+            m = evaluate_edges(D, T)
+            precisions.append(m['precision'])
+            recalls.append(m['recall'])
+        # Average Precision: area under the curve
+        ap = abs(np.trapezoid(precisions, recalls)) if len(set(recalls)) > 1 else 0
+        ax.plot(recalls, precisions, color=color, label=f'{lap_type} (AP={ap:.3f})')
+
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title(f'{label}, σ={sigma}')
+    ax.legend()
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
+    ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
 # 1.4 Edge Detection on a real Image
 
 I_real = cv2.imread(os.path.join(DATA_DIR, 'ermoupoli.jpg'), cv2.IMREAD_GRAYSCALE)
