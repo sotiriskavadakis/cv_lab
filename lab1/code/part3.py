@@ -15,7 +15,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'part3')
+DATA_DIR    = os.path.join(os.path.dirname(__file__), '..', 'data', 'part3')
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'results')
+os.makedirs(RESULTS_DIR, exist_ok=True)
 classes = ['car', 'person', 'bike']
 
 # 3.2.1 Load MobileNetV3-Small and its pretrained weights
@@ -81,7 +83,7 @@ ax.set_xlabel('Predicted')
 ax.set_ylabel('True')
 ax.set_title(f'Confusion Matrix — MobileNet + SVM ({accuracy*100:.2f}%)')
 plt.tight_layout()
-plt.savefig('confusion_matrix.jpg', dpi=150, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'confusion_matrix.jpg'), dpi=150, bbox_inches='tight')
 plt.show()
 
 # 3.2.4 Visualize feature maps from intermediate layers
@@ -117,7 +119,7 @@ for cls, img in sample_per_class.items():
             axes[row, col].axis('off')
 
     plt.tight_layout()
-    plt.savefig(f'feature_maps_{cls}.jpg')
+    plt.savefig(os.path.join(RESULTS_DIR, f'feature_maps_{cls}.jpg'))
     plt.show()
 
 # 3.2.5 run experiments with different noise levels and edge detection parameters
@@ -218,7 +220,7 @@ ax.set_title('Robustness of MobileNet+SVM to Gaussian Noise')
 ax.legend()
 ax.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('robustness_curve.jpg', dpi=150, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'robustness_curve.jpg'), dpi=150, bbox_inches='tight')
 plt.show()
 
 # 3.2.6 t-SNE visualization of avgpool features
@@ -250,7 +252,7 @@ for ax, proj, title, xlabel, ylabel in [
     ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('tsne_pca_features.jpg', dpi=150, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'tsne_pca_features.jpg'), dpi=150, bbox_inches='tight')
 plt.show()
 
 # 3.2.7 Fine-tuning: unfreeze last 3 blocks of MobileNet + 3-class head

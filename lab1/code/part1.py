@@ -7,12 +7,20 @@ import os
 
 # 1.1.1 Load the image and ensure it is in grayscale format
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+DATA_DIR    = os.path.join(os.path.dirname(__file__), '..', 'data')
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'results', 'part1')
+PICTURES_DIR = os.path.join(os.path.dirname(__file__), '..', 'docs', 'pictures')
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(PICTURES_DIR, exist_ok=True)
 
-I0 = cv2.imread(os.path.join(DATA_DIR, 'edgetest_26.png'), cv2.IMREAD_GRAYSCALE).astype(np.float64)
+def save_fig(filename: str) -> None:
+    for directory in (RESULTS_DIR, PICTURES_DIR):
+        plt.savefig(os.path.join(directory, filename))
 
-if I0 is None:
-    raise FileNotFoundError("Could not load 'edgetest_26.png.")
+_I0_raw = cv2.imread(os.path.join(DATA_DIR, 'edgetest_26.png'), cv2.IMREAD_GRAYSCALE)
+if _I0_raw is None:
+    raise FileNotFoundError("Could not load 'edgetest_26.png'.")
+I0 = _I0_raw.astype(np.float64)
 
 # 1.1.2 Add Gaussian noise based on PSNR to the images
 
@@ -39,18 +47,18 @@ I_10 = add_gaussian_noise(I0, psnr_db=10)
 # Display the original and noisy images side by side for comparison
 # Image with PSNR=20dB should have less noise than the one with PSNR=10dB as the noise power is lower.
 
-fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+fig, axes = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
 for ax, img, title in zip(
     axes,
     [I0, I_20, I_10],
-    ['Original (I0)', 'Noisy PSNR=20dB', 'Noisy PSNR=10dB']
+    ['Original ($I_0$)', 'Noisy PSNR=20dB', 'Noisy PSNR=10dB']
 ):
     ax.imshow(img, cmap='gray', vmin=0, vmax=255)
     ax.set_title(title)
     ax.axis('off')
 
-plt.tight_layout()
-plt.show()
+save_fig('noisy_images.jpg')
+plt.close()
 
 # 1.2.1 Filter Kernels
 
@@ -133,7 +141,7 @@ def find_ground_truth_edges(image: np.ndarray, theta_real_edge: float) -> np.nda
     """
     To compute the ground-truth edge map from the clean image I0, 
     we first apply a simple morphological edge detection method to get an edge map.
-    Then we keep only the pixels where they edxcee
+    Then we keep only the pixels where they exceed a certain threshold based.
     """
     B = np.ones((3, 3), dtype=np.uint8) # 3x3 structuring element for dilation/erosion
     M = cv2.dilate(image, B).astype(np.float64) - cv2.erode(image, B).astype(np.float64)
@@ -172,11 +180,7 @@ for img, label, sigma, theta_edge in experiments:
     print(f"  Linear: P={m_lin['precision']:.3f}, R={m_lin['recall']:.3f}, C={m_lin['C']:.3f}")
     print(f"  Nonlinear: P={m_nln['precision']:.3f}, R={m_nln['recall']:.3f}, C={m_nln['C']:.3f}")
 
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6))
-    fig.subplots_adjust(top=0.82)
-
-    fig.suptitle(f'Edge Detection — {label}\nσ={sigma}, θ_edge={theta_edge}, θ_real={0.1}',
-                 fontsize=14, fontweight='bold')
+    fig, axes = plt.subplots(1, 3, figsize=(12, 5), constrained_layout=True)
 
     axes[0].imshow(T, cmap='gray')
     axes[0].set_title('Ground Truth', fontsize=12)
@@ -194,7 +198,9 @@ for img, label, sigma, theta_edge in experiments:
                       fontsize=12)
     axes[2].axis('off')
 
-    plt.show()
+    fname = f"edges_{label.replace('=','').replace(' ','_')}_sigma{sigma}_theta{theta_edge}.jpg"
+    save_fig(fname)
+    plt.close()
 
 # 1.3.4 Precision-Recall Curves over theta_edge sweep
 
@@ -206,8 +212,6 @@ pr_experiments = [
 ]
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-fig.suptitle('Precision-Recall Curves', fontsize=14, fontweight='bold')
-
 for ax, (img, label, sigma) in zip(axes, pr_experiments):
     for lap_type, color in [('linear', 'blue'), ('nonlinear', 'orange')]:
         precisions, recalls = [], []
@@ -216,9 +220,13 @@ for ax, (img, label, sigma) in zip(axes, pr_experiments):
             m = evaluate_edges(D, T)
             precisions.append(m['precision'])
             recalls.append(m['recall'])
-        # Average Precision: area under the curve
-        ap = abs(np.trapezoid(precisions, recalls)) if len(set(recalls)) > 1 else 0
+        # Average Precision: area under the PR curve (sort by recall for correct integration)
+        sorted_pairs = sorted(zip(recalls, precisions))
+        sorted_recalls, sorted_precisions = zip(*sorted_pairs)
+        ap = np.trapezoid(sorted_precisions, sorted_recalls) if len(set(recalls)) > 1 else 0
         ax.plot(recalls, precisions, color=color, label=f'{lap_type} (AP={ap:.3f})')
+        best = np.argmax([(p + r) / 2 for p, r in zip(precisions, recalls)])
+        ax.scatter(recalls[best], precisions[best], color=color, marker='*', s=200, zorder=5)
 
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
@@ -229,7 +237,8 @@ for ax, (img, label, sigma) in zip(axes, pr_experiments):
     ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.show()
+save_fig('precision_recall_curves.jpg')
+plt.close()
 
 # 1.4 Edge Detection on a real Image
 
@@ -252,10 +261,7 @@ for sigma, theta_edge, desc in real_experiments:
     D_lin = EdgeDetect(I_real, sigma, theta_edge, laplacian_type='linear')
     D_nln = EdgeDetect(I_real, sigma, theta_edge, laplacian_type='nonlinear')
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    fig.suptitle(f'Real Image (ermoupoli.jpg) — {desc}\nσ={sigma}, θ_edge={theta_edge}',
-                 fontsize=14, fontweight='bold')
-
+    fig, axes = plt.subplots(1, 3, figsize=(15, 3.5), constrained_layout=True)
     axes[0].imshow(I_real, cmap='gray', aspect='equal')
     axes[0].set_title('Original', fontsize=12)
     axes[0].axis('off')
@@ -268,6 +274,27 @@ for sigma, theta_edge, desc in real_experiments:
     axes[2].set_title('Nonlinear (L2)', fontsize=12)
     axes[2].axis('off')
 
-    plt.tight_layout(rect=[0, 0, 1, 0.92])
+    fname = f"real_edges_sigma{sigma}_theta{theta_edge}.jpg"
+    save_fig(fname)
+    plt.close()
 
-    plt.show()
+# 1.5 Sigma sweep: C metric vs sigma for fixed theta_edge=0.2
+
+sigmas = np.linspace(0.5, 5.0, 10)
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+for ax, (img, label) in zip(axes, [(I_20, 'PSNR=20dB'), (I_10, 'PSNR=10dB')]):
+    for lap_type, color in [('linear', 'blue'), ('nonlinear', 'orange')]:
+        C_scores = [evaluate_edges(EdgeDetect(img, s, 0.2, lap_type), T)['C'] for s in sigmas]
+        ax.plot(sigmas, C_scores, marker='o', color=color, label=lap_type)
+        ax.axvline(x=1.5 if label == 'PSNR=20dB' else 3.0,
+                   linestyle='--', color='gray', alpha=0.6, label='suggested σ')
+    ax.set_xlabel('σ')
+    ax.set_ylabel('C score')
+    ax.set_title(label)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+save_fig('sigma_sweep.jpg')
+plt.close()

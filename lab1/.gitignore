@@ -1,14 +1,21 @@
 # macOS metadata
 .DS_Store
 
-# Generated output images
-feature_maps_*.jpg
-gradcam_*.jpg
-tsne_pca_features.jpg
-confusion_matrix.jpg
-robustness_curve.jpg
+# Editor config
+.vscode/
 
-# Dataset images
+# Generated output images (re-run code to reproduce)
+results/
+
+# Dataset images (download separately — too large to track)
 data/part3/**/*.jpg
 data/part3/**/*.jpeg
 data/part3/**/*.png
+
+# LaTeX build artifacts
+docs/*.aux
+docs/*.out
+docs/*.toc
+docs/*.log
+docs/texput.log
+docs/main.pdf

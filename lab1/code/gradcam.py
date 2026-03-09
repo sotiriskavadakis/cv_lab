@@ -12,7 +12,9 @@ from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
 import matplotlib.pyplot as plt
 import cv2
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'part3')
+DATA_DIR    = os.path.join(os.path.dirname(__file__), '..', 'data', 'part3')
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'results')
+os.makedirs(RESULTS_DIR, exist_ok=True)
 classes = ['car', 'person', 'bike']
 
 # Load model (same as part3, but we need gradients → no torch.no_grad here)
@@ -99,7 +101,7 @@ for cls in classes:
     axes[2].imshow(overlay);        axes[2].set_title('Overlay');   axes[2].axis('off')
 
     plt.tight_layout()
-    plt.savefig(f'gradcam_{cls}.jpg', bbox_inches='tight')
+    plt.savefig(os.path.join(RESULTS_DIR, f'gradcam_{cls}.jpg'), bbox_inches='tight')
     plt.show()
     print(f"[{cls}] predicted ImageNet class index: {pred_class}")
 
@@ -215,5 +217,5 @@ else:
         axes[2].imshow(overlay);                      axes[2].set_title('Overlay');   axes[2].axis('off')
 
         plt.tight_layout()
-        plt.savefig(f'gradcam_misclassified_{true_name}_as_{pred_name}.jpg', bbox_inches='tight')
+        plt.savefig(os.path.join(RESULTS_DIR, f'gradcam_misclassified_{true_name}_as_{pred_name}.jpg'), bbox_inches='tight')
         plt.show()
