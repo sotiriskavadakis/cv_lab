@@ -1,26 +1,40 @@
-import os
-
+import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import numpy as np
+import os
 
 try:
     from .cv26_lab1_part2_utils import disk_strel, interest_points_visualization
 except ImportError:
     from cv26_lab1_part2_utils import disk_strel, interest_points_visualization
 
+# PART 2: Interest Point Detection in Images
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "part2")
+PICTURES_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "pictures")
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(PICTURES_DIR, exist_ok=True)
 
 
-# ============================================================
-# Shared helper functions for Part 2
-# ============================================================
+def save_fig(filename: str) -> None:
+    for directory in (RESULTS_DIR, PICTURES_DIR):
+        plt.savefig(os.path.join(directory, filename), dpi=150, bbox_inches="tight")
 
 
-# ============================================================
-# Part 2.1.1 - Compute J1, J2, J3 of the structure tensor J
-# ============================================================
+def load_color_image(filename: str) -> np.ndarray:
+    """Load a BGR image from the Part 2 data directory."""
+    path = os.path.join(DATA_DIR, filename)
+    image = cv2.imread(path, cv2.IMREAD_COLOR)
+    if image is None:
+        raise FileNotFoundError(f"Could not load '{filename}'.")
+    return image
+
+
+# Part 2 helper functions
+
+
+# 2.1.1 Compute J1, J2, J3 of the structure tensor J
 # Paper equations for each pixel (x, y):
 #   I_sigma = G_sigma * I
 #   J1 = G_rho * (Ix * Ix)
@@ -110,9 +124,7 @@ def compute_J1_J2_J3(I: np.ndarray, sigma: float = 2.0, rho: float = 2.5) -> tup
     return J1, J2, J3
 
 
-# ============================================================
-# Part 2.1.2 - Compute the eigenvalues lambda_- and lambda_+
-# ============================================================
+# 2.1.2 Compute the eigenvalues lambda_- and lambda_+
 # Paper equation:
 #   lambda_(+/-) = 0.5 * (J1 + J3 +/- sqrt((J1 - J3)^2 + 4 * J2^2))
 
@@ -140,9 +152,7 @@ def compute_lambda_minus_plus(
     return lambda_minus, lambda_plus
 
 
-# ============================================================
-# Part 2.1.3 - Harris cornerness criterion and interest points
-# ============================================================
+# 2.1.3 Harris cornerness criterion and interest points
 # Paper equation:
 #   R(x, y) = lambda_- * lambda_+ - k * (lambda_- + lambda_+)^2
 # Keep pixels that:
@@ -194,9 +204,7 @@ def detect_harris_corners(
     return R, corners.astype(np.float64)
 
 
-# ============================================================
-# Part 2.2.1 - Build the multi-scale Harris representation
-# ============================================================
+# 2.2.1 Build the multi-scale Harris representation
 # Paper scale sequence:
 #   sigma_i = (s ** i) * sigma_0,   i = 0, ..., N - 1
 #   rho_i   = (s ** i) * rho_0,     i = 0, ..., N - 1
@@ -266,9 +274,7 @@ def detect_harris_corners_multiscale(
     return scale_results
 
 
-# ============================================================
-# Part 2.2.2 - Select characteristic scale with normalized LoG
-# ============================================================
+# 2.2.2 Select characteristic scale with normalized LoG
 # Paper equation:
 #   |LoG(x, i)| = sigma_i^2 * |Lxx(x, i) + Lyy(x, i)|,  i = 0, ..., N - 1
 # Harris-Laplacian selection:
@@ -350,21 +356,196 @@ def select_harris_laplacian_points(
     return scale_results, selected_points_array
 
 
-# ============================================================
-# Visualization helper for Part 2.1.1
-# ============================================================
+# 2.3.1 Hessian determinant response for blob detection
+# Paper equations:
+#   H(x, y) = [[Lxx(x, y; sigma), Lxy(x, y; sigma)],
+#              [Lxy(x, y; sigma), Lyy(x, y; sigma)]]
+#   R(x, y) = det(H(x, y))
 
 
-def run_2_1_1_demo() -> None:
-    """Visualize J1, J2, J3 for the two images requested in Part 2.1.1."""
+def compute_Lxx_Lxy_Lyy(
+    I: np.ndarray, sigma: float = 2.0
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Part 2.3.1 implementation.
+
+    Compute the second-order partial derivatives of the smoothed image:
+        I_sigma = G_sigma * I
+        Lxx = d^2 I_sigma / dx^2
+        Lxy = d^2 I_sigma / dx dy
+        Lyy = d^2 I_sigma / dy^2
+    """
+    I_gray = ensure_gray_float(I)
+
+    # 2.3.1(a): Smooth the input image at the selected scale sigma.
+    G_sigma = gaussian_kernel(sigma)
+    I_sigma = convolve(I_gray, G_sigma)
+
+    # 2.3.1(b): Estimate first derivatives, then differentiate once more.
+    Iy, Ix = np.gradient(I_sigma)
+    Ixy_from_x = np.gradient(Ix, axis=0)
+    Ixy_from_y = np.gradient(Iy, axis=1)
+    Lxx = np.gradient(Ix, axis=1)
+    Lyy = np.gradient(Iy, axis=0)
+
+    # Average both mixed-derivative estimates for better symmetry.
+    Lxy = 0.5 * (Ixy_from_x + Ixy_from_y)
+    return Lxx, Lxy, Lyy
+
+
+def compute_hessian_response(
+    Lxx: np.ndarray, Lxy: np.ndarray, Lyy: np.ndarray
+) -> np.ndarray:
+    """Compute the determinant of the Hessian matrix at each pixel."""
+    return Lxx * Lyy - Lxy * Lxy
+
+
+# 2.3.2 Blob interest points from Hessian local maxima
+
+
+def detect_hessian_blobs(
+    I: np.ndarray, sigma: float = 2.0, theta_blob: float = 0.005
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Part 2.3.2 implementation.
+
+    Returns:
+      R: Hessian determinant response image
+      blobs: Nx3 array with columns [x, y, sigma]
+    """
+    # 2.3.2(a): Build the Hessian determinant response of Part 2.3.1.
+    Lxx, Lxy, Lyy = compute_Lxx_Lxy_Lyy(I, sigma=sigma)
+    R = compute_hessian_response(Lxx, Lxy, Lyy)
+
+    # 2.3.2(b): Keep local maxima inside a disk neighborhood.
+    ns = int(np.ceil(3 * sigma) * 2 + 1)
+    B_sq = disk_strel(ns)
+    cond1 = R == cv2.dilate(R, B_sq)
+
+    # 2.3.2(c): Keep only strong determinant values.
+    R_max = float(R.max())
+    cond2 = R > theta_blob * R_max
+
+    ys, xs = np.nonzero(cond1 & cond2)
+    blobs = np.column_stack((xs, ys, np.full(xs.shape, sigma, dtype=np.float64)))
+    return R, blobs.astype(np.float64)
+
+
+# 2.4.1 Multi-scale blob detection (Hessian-Laplace)
+
+
+def build_blob_scale_sequence(
+    sigma_0: float = 2.0, s: float = 1.5, N: int = 4
+) -> np.ndarray:
+    """Return the sigma sequence for multi-scale blob detection."""
+    if sigma_0 <= 0:
+        raise ValueError("sigma_0 must be positive.")
+    if s <= 1.0:
+        raise ValueError("s must be greater than 1.")
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    indices = np.arange(N, dtype=np.float64)
+    return sigma_0 * (s ** indices)
+
+
+def detect_hessian_blobs_multiscale(
+    I: np.ndarray,
+    sigma_0: float = 2.0,
+    s: float = 1.5,
+    N: int = 4,
+    theta_blob: float = 0.005,
+) -> list[dict]:
+    """
+    Part 2.4.1 implementation.
+
+    Build Hessian determinant responses and blob detections across N scales.
+    The final scale selection step is added separately with Hessian-Laplace.
+    """
+    sigma_values = build_blob_scale_sequence(sigma_0=sigma_0, s=s, N=N)
+
+    scale_results: list[dict] = []
+    for i, sigma_i in enumerate(sigma_values):
+        R_i, blobs_i = detect_hessian_blobs(
+            I,
+            sigma=float(sigma_i),
+            theta_blob=theta_blob,
+        )
+        scale_results.append(
+            {
+                "scale_index": i,
+                "sigma": float(sigma_i),
+                "R": R_i,
+                "blobs": blobs_i,
+            }
+        )
+
+    return scale_results
+
+
+def select_hessian_laplacian_blobs(
+    scale_results: list[dict], I: np.ndarray
+) -> tuple[list[dict], np.ndarray]:
+    """
+    Part 2.4.1 implementation of the Hessian-Laplace selection stage.
+
+    For each blob detected at scale i, keep it only if its normalized LoG
+    response is maximal over neighboring scales i-1, i, i+1.
+    """
+    if not scale_results:
+        return scale_results, np.empty((0, 3), dtype=np.float64)
+
+    log_responses = [
+        compute_normalized_log_response(I, scale_result["sigma"])
+        for scale_result in scale_results
+    ]
+
+    for scale_result, log_response in zip(scale_results, log_responses):
+        scale_result["LoG"] = log_response
+
+    selected_points: list[list[float]] = []
+
+    for i, scale_result in enumerate(scale_results):
+        blobs_i = scale_result["blobs"]
+        if len(blobs_i) == 0:
+            scale_result["selected_blobs"] = np.empty((0, 3), dtype=np.float64)
+            continue
+
+        log_i = log_responses[i]
+        log_prev = log_responses[i - 1] if i > 0 else None
+        log_next = log_responses[i + 1] if i < len(log_responses) - 1 else None
+
+        selected_at_scale: list[list[float]] = []
+        for x, y, sigma_i in blobs_i:
+            x_int = int(round(x))
+            y_int = int(round(y))
+            value = log_i[y_int, x_int]
+
+            prev_ok = log_prev is None or value >= log_prev[y_int, x_int]
+            next_ok = log_next is None or value >= log_next[y_int, x_int]
+
+            if prev_ok and next_ok:
+                point = [float(x), float(y), float(sigma_i)]
+                selected_at_scale.append(point)
+                selected_points.append(point)
+
+        scale_result["selected_blobs"] = np.array(selected_at_scale, dtype=np.float64)
+
+    if selected_points:
+        selected_points_array = np.array(selected_points, dtype=np.float64)
+    else:
+        selected_points_array = np.empty((0, 3), dtype=np.float64)
+
+    return scale_results, selected_points_array
+
+
+if __name__ == "__main__":
+    # 2.1.1 Visualize J1, J2, J3
     sigma = 2.0
     rho = 2.5
 
     for name in ["solar.jpg", "blood_cells.jpg"]:
-        path = os.path.join(DATA_DIR, name)
-        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
-        if I_color is None:
-            raise FileNotFoundError(f"Could not load '{name}'.")
+        I_color = load_color_image(name)
 
         J1, J2, J3 = compute_J1_J2_J3(I_color, sigma=sigma, rho=rho)
 
@@ -388,24 +569,15 @@ def run_2_1_1_demo() -> None:
         ax[2].axis("off")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
-        plt.show()
+        save_fig(f"part2_2_1_1_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
-
-# ============================================================
-# Visualization helper for Part 2.1.2
-# ============================================================
-
-
-def run_2_1_2_demo() -> None:
-    """Visualize the structure tensor eigenvalues lambda_- and lambda_+."""
+    # 2.1.2 Visualize lambda_- and lambda_+
     sigma = 2.0
     rho = 2.5
 
     for name in ["solar.jpg", "blood_cells.jpg"]:
-        path = os.path.join(DATA_DIR, name)
-        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
-        if I_color is None:
-            raise FileNotFoundError(f"Could not load '{name}'.")
+        I_color = load_color_image(name)
 
         J1, J2, J3 = compute_J1_J2_J3(I_color, sigma=sigma, rho=rho)
         lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
@@ -426,27 +598,17 @@ def run_2_1_2_demo() -> None:
         ax[1].axis("off")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
-        plt.show()
+        save_fig(f"part2_2_1_2_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
-
-# ============================================================
-# Visualization helper for Part 2.1.3
-# ============================================================
-
-
-def run_2_1_3_demo() -> None:
-    """Visualize Harris responses and detected corners for the requested images."""
+    # 2.1.3 Visualize Harris responses and corners
     sigma = 2.0
     rho = 2.5
     k = 0.05
     theta_corn = 0.005
 
     for name in ["solar.jpg", "blood_cells.jpg"]:
-        path = os.path.join(DATA_DIR, name)
-        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
-        if I_color is None:
-            raise FileNotFoundError(f"Could not load '{name}'.")
-
+        I_color = load_color_image(name)
         I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
         R, corners = detect_harris_corners(
             I_color, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn
@@ -467,16 +629,10 @@ def run_2_1_3_demo() -> None:
         ax[1].set_title(f"Detected corners: {len(corners)}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
-        plt.show()
+        save_fig(f"part2_2_1_3_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
-
-# ============================================================
-# Visualization helper for Part 2.2.1
-# ============================================================
-
-
-def run_2_2_1_demo() -> None:
-    """Visualize Harris corners across the scale sequence of Part 2.2.1."""
+    # 2.2.1 Visualize multi-scale Harris corners
     sigma_0 = 2.0
     rho_0 = 2.5
     s = 1.5
@@ -485,11 +641,7 @@ def run_2_2_1_demo() -> None:
     theta_corn = 0.005
 
     for name in ["solar.jpg", "blood_cells.jpg"]:
-        path = os.path.join(DATA_DIR, name)
-        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
-        if I_color is None:
-            raise FileNotFoundError(f"Could not load '{name}'.")
-
+        I_color = load_color_image(name)
         I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
         scale_results = detect_harris_corners_multiscale(
             I_color,
@@ -515,23 +667,19 @@ def run_2_2_1_demo() -> None:
             rho_i = scale_result["rho"]
 
             axes[0, ax_col].imshow(R_i, cmap="gray")
-            axes[0, ax_col].set_title(f"R, i={ax_col}\nsigma={sigma_i:.2f}, rho={rho_i:.2f}")
+            axes[0, ax_col].set_title(
+                f"R, i={ax_col}\nsigma={sigma_i:.2f}, rho={rho_i:.2f}"
+            )
             axes[0, ax_col].axis("off")
 
             interest_points_visualization(I_rgb, corners_i, ax=axes[1, ax_col])
             axes[1, ax_col].set_title(f"Corners: {len(corners_i)}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
-        plt.show()
+        save_fig(f"part2_2_2_1_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
-
-# ============================================================
-# Visualization helper for Part 2.2.2
-# ============================================================
-
-
-def run_2_2_2_demo() -> None:
-    """Visualize Harris-Laplacian points after scale selection."""
+    # 2.2.2 Visualize Harris-Laplacian scale selection
     sigma_0 = 2.0
     rho_0 = 2.5
     s = 1.5
@@ -540,11 +688,7 @@ def run_2_2_2_demo() -> None:
     theta_corn = 0.005
 
     for name in ["solar.jpg", "blood_cells.jpg"]:
-        path = os.path.join(DATA_DIR, name)
-        I_color = cv2.imread(path, cv2.IMREAD_COLOR)
-        if I_color is None:
-            raise FileNotFoundError(f"Could not load '{name}'.")
-
+        I_color = load_color_image(name)
         I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
         scale_results = detect_harris_corners_multiscale(
             I_color,
@@ -580,19 +724,92 @@ def run_2_2_2_demo() -> None:
             axes[1, ax_col].set_title(f"Selected: {len(selected)}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
-        plt.show()
+        save_fig(f"part2_2_2_2_grid_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
         fig2, ax2 = plt.subplots(figsize=(7, 5))
         fig2.suptitle(f"Part 2.2.2 - Final Harris-Laplacian points on {name}")
         interest_points_visualization(I_rgb, selected_points, ax=ax2)
         ax2.set_title(f"Total selected points: {len(selected_points)}")
         plt.tight_layout()
-        plt.show()
+        save_fig(f"part2_2_2_2_final_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
+    # 2.3 Visualize Hessian determinant blobs
+    sigma = 2.0
+    theta_blob = 0.005
 
-if __name__ == "__main__":
-    run_2_1_1_demo()
-    run_2_1_2_demo()
-    run_2_1_3_demo()
-    run_2_2_1_demo()
-    run_2_2_2_demo()
+    for name in ["solar.jpg", "blood_cells.jpg"]:
+        I_color = load_color_image(name)
+        I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
+        R, blobs = detect_hessian_blobs(I_color, sigma=sigma, theta_blob=theta_blob)
+
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        fig.suptitle(
+            f"Part 2.3 - {name} (sigma={sigma}, theta_blob={theta_blob})",
+            fontsize=13,
+            fontweight="bold",
+        )
+
+        ax[0].imshow(R, cmap="gray")
+        ax[0].set_title("det(H)")
+        ax[0].axis("off")
+
+        interest_points_visualization(I_rgb, blobs, ax=ax[1])
+        ax[1].set_title(f"Detected blobs: {len(blobs)}")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
+        save_fig(f"part2_2_3_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
+
+    # 2.4 Visualize Hessian-Laplace multi-scale blobs
+    sigma_0 = 2.0
+    s = 1.5
+    N = 4
+    theta_blob = 0.005
+
+    for name in ["solar.jpg", "blood_cells.jpg"]:
+        I_color = load_color_image(name)
+        I_rgb = cv2.cvtColor(I_color, cv2.COLOR_BGR2RGB)
+        scale_results = detect_hessian_blobs_multiscale(
+            I_color,
+            sigma_0=sigma_0,
+            s=s,
+            N=N,
+            theta_blob=theta_blob,
+        )
+        scale_results, selected_blobs = select_hessian_laplacian_blobs(
+            scale_results, I_color
+        )
+
+        fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
+        fig.suptitle(
+            f"Part 2.4 - {name} (sigma_0={sigma_0}, s={s}, N={N})",
+            fontsize=13,
+            fontweight="bold",
+        )
+
+        for ax_col, scale_result in enumerate(scale_results):
+            axes[0, ax_col].imshow(scale_result["LoG"], cmap="gray")
+            axes[0, ax_col].set_title(
+                f"|LoG|, i={ax_col}\nsigma={scale_result['sigma']:.2f}"
+            )
+            axes[0, ax_col].axis("off")
+
+            selected = scale_result.get(
+                "selected_blobs", np.empty((0, 3), dtype=np.float64)
+            )
+            interest_points_visualization(I_rgb, selected, ax=axes[1, ax_col])
+            axes[1, ax_col].set_title(f"Selected: {len(selected)}")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
+        save_fig(f"part2_2_4_grid_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
+
+        fig2, ax2 = plt.subplots(figsize=(7, 5))
+        fig2.suptitle(f"Part 2.4 - Final Hessian-Laplace blobs on {name}")
+        interest_points_visualization(I_rgb, selected_blobs, ax=ax2)
+        ax2.set_title(f"Total selected blobs: {len(selected_blobs)}")
+        plt.tight_layout()
+        save_fig(f"part2_2_4_final_{os.path.splitext(name)[0]}.jpg")
+        plt.close()

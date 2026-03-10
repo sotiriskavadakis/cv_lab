@@ -486,6 +486,256 @@ zero-crossings με μεγάλη κλίση, δηλαδή αυτά που αντ
 
 % ─────────────────────────────────────────────────────────────────────────────
 \clearpage
+\section{Εντοπισμός Σημείων Ενδιαφέροντος}
+
+Στο δεύτερο μέρος της άσκησης υλοποιήθηκαν ανιχνευτές σημείων ενδιαφέροντος
+για γωνίες και blobs, τόσο σε μία κλίμακα όσο και σε πολλαπλές κλίμακες.
+Οι υλοποιήσεις έγιναν στο αρχείο \texttt{part2.py} και εφαρμόστηκαν στις
+εικόνες \texttt{solar.jpg} και \texttt{blood\_cells.jpg}. Σε όλες τις
+περιπτώσεις, οι εικόνες μετατρέπονται αρχικά σε grayscale \texttt{float64},
+ώστε οι συνέλικες και οι παράγωγοι να υπολογίζονται με αριθμητική ακρίβεια,
+και χρησιμοποιείται ανακλαστικό χειρισμό συνόρων (\texttt{BORDER\_REFLECT})
+για αποφυγή τεχνητών αποκρίσεων κοντά στα όρια.
+
+\subsection{Ανίχνευση Γωνιών σε Μία Κλίμακα}
+
+\subsubsection{Υπολογισμός του Δομικού Τανυστή}
+
+Για δεδομένη κλίμακα διαφορίσεως $\sigma$ και κλίμακα ολοκλήρωσης $\rho$,
+υπολογίστηκαν τα στοιχεία του δομικού τανυστή:
+\begin{equation}
+    J_1(x,y) = G_\rho * \left( \frac{\partial I_\sigma}{\partial x} \right)^2,
+    \quad
+    J_2(x,y) = G_\rho * \left( \frac{\partial I_\sigma}{\partial x}
+    \frac{\partial I_\sigma}{\partial y} \right),
+    \quad
+    J_3(x,y) = G_\rho * \left( \frac{\partial I_\sigma}{\partial y} \right)^2
+\end{equation}
+όπου $I_\sigma = G_\sigma * I$ είναι η εξομαλυμένη εικόνα. Η Gaussian
+κατασκευάζεται, όπως και στο Μέρος~1, ως εξωτερικό γινόμενο δύο 1D πυρήνων
+που επιστρέφει η \texttt{cv2.getGaussianKernel}, με μέγεθος
+$n = 2\lceil 3\sigma \rceil + 1$. Οι πρώτες παράγωγοι υπολογίζονται αριθμητικά
+με τη \texttt{numpy.gradient}. Έτσι, ο τανυστής
+\begin{equation}
+    J(x,y) =
+    \begin{bmatrix}
+        J_1(x,y) & J_2(x,y) \\
+        J_2(x,y) & J_3(x,y)
+    \end{bmatrix}
+\end{equation}
+κωδικοποιεί τη μεταβολή της έντασης σε τοπική γειτονιά του κάθε pixel.
+
+\subsubsection{Ιδιοτιμές του Τανυστή}
+
+Από τον συμμετρικό πίνακα $J$ υπολογίζονται οι δύο ιδιοτιμές
+$\lambda_-$ και $\lambda_+$ σε κλειστή μορφή:
+\begin{equation}
+    \lambda_{\pm}
+    = \frac{1}{2}
+    \left(
+        J_1 + J_3 \pm \sqrt{(J_1 - J_3)^2 + 4J_2^2}
+    \right)
+\end{equation}
+Οι τιμές αυτές έχουν άμεση γεωμετρική ερμηνεία: σε ομαλές περιοχές και οι δύο
+είναι μικρές, σε ακμές η μία είναι μεγάλη και η άλλη μικρή, ενώ σε γωνίες και
+οι δύο λαμβάνουν μεγάλες τιμές. Για τον λόγο αυτό αποτελούν το κατάλληλο
+ενδιάμεσο στάδιο για τον ορισμό ενός κριτηρίου ``γωνιότητας''.
+
+\subsubsection{Κριτήριο Harris και Επιλογή Σημείων}
+
+Το κριτήριο Harris-Stephens ορίστηκε ως:
+\begin{equation}
+    R(x,y) = \lambda_-(x,y)\lambda_+(x,y)
+    - k\left(\lambda_-(x,y) + \lambda_+(x,y)\right)^2
+\end{equation}
+με $k = 0.05$. Για να εξαχθούν τελικά σημεία ενδιαφέροντος, κρατήθηκαν μόνο τα
+pixels που:
+\begin{enumerate}
+    \item αποτελούν τοπικά μέγιστα της $R$ σε δισκοειδή γειτονιά με μέγεθος
+    που εξαρτάται από την κλίμακα ($n = 2\lceil 3\sigma \rceil + 1$),
+    \item ικανοποιούν το κατώφλι
+    $R(x,y) > \theta_{\text{corn}} R_{\max}$ με
+    $\theta_{\text{corn}} = 0.005$.
+\end{enumerate}
+Τα επιλεγμένα σημεία αποθηκεύονται σε πίνακα $N \times 3$ με συντεταγμένες
+$(x,y,\sigma)$, ώστε η πληροφορία της κλίμακας να είναι διαθέσιμη και στα
+επόμενα στάδια της πολυκλιμακωτής ανίχνευσης.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_1_3_solar.jpg}
+    \caption{Αποτελέσματα της ενότητας 2.1.3 για την εικόνα \texttt{solar.jpg}.
+             Αριστερά φαίνεται ο χάρτης απόκρισης Harris $R$, ενώ δεξιά τα
+             τελικά σημεία γωνίας που προκύπτουν μετά από non-maximum
+             suppression και κατωφλίωση.}
+    \label{fig:part2_harris_solar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_1_3_blood_cells.jpg}
+    \caption{Αποτελέσματα της ενότητας 2.1.3 για την εικόνα
+             \texttt{blood\_cells.jpg}. Οι έντονες αποκρίσεις συγκεντρώνονται
+             κυρίως στα σημεία επαφής και στις περιοχές υψηλής καμπυλότητας των
+             κυτταρικών περιγραμμάτων.}
+    \label{fig:part2_harris_blood}
+\end{figure}
+
+\subsection{Πολυκλιμακωτή Ανίχνευση Γωνιών}
+
+\subsubsection{Κατασκευή της Αναπαράστασης Πολλαπλών Κλιμάκων}
+
+Σύμφωνα με την εκφώνηση, χρησιμοποιήθηκε γεωμετρική ακολουθία κλιμάκων:
+\begin{equation}
+    \sigma_i = s^i \sigma_0, \qquad
+    \rho_i = s^i \rho_0, \qquad i = 0, \dots, N-1
+\end{equation}
+με $\sigma_0 = 2.0$, $\rho_0 = 2.5$, $s = 1.5$ και $N = 4$.
+Σε κάθε επίπεδο κλίμακας εφαρμόστηκε ανεξάρτητα ο ανιχνευτής Harris της
+προηγούμενης παραγράφου, παράγοντας για κάθε $i$ τον χάρτη αποκρίσεων $R_i$
+και το αντίστοιχο σύνολο γωνιών. Η διαδικασία αυτή δεν επιλέγει ακόμη τη
+``σωστή'' κλίμακα για κάθε σημείο, αλλά δημιουργεί την απαιτούμενη
+πολυκλιμακωτή αναπαράσταση.
+
+\subsubsection{Harris-Laplacian Επιλογή Χαρακτηριστικής Κλίμακας}
+
+Για κάθε κλίμακα υπολογίστηκε η κανονικοποιημένη απόκριση Laplacian-of-Gaussian:
+\begin{equation}
+    |\text{LoG}(x,i)| = \sigma_i^2 \, |L_{xx}(x,i) + L_{yy}(x,i)|
+\end{equation}
+Στην υλοποίηση, αυτή η ποσότητα προκύπτει με συνέλιξη της εικόνας με τον
+πυρήνα LoG της αντίστοιχης κλίμακας και στη συνέχεια πολλαπλασιασμό με
+$\sigma_i^2$. Για κάθε σημείο Harris που ανιχνεύτηκε στην κλίμακα $i$,
+ελέγχεται αν η κανονικοποιημένη LoG απόκριση στο ίδιο χωρικό σημείο είναι
+μέγιστη ως προς τις γειτονικές κλίμακες $i-1$, $i$, $i+1$. Μόνο σε αυτήν την
+περίπτωση το σημείο διατηρείται. Με τον τρόπο αυτό εξασφαλίζεται ότι το
+τελικό σύνολο σημείων δεν είναι μόνο γωνίες, αλλά και γωνίες που εμφανίζουν
+χαρακτηριστική κλίμακα στο scale-space.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_2_2_final_solar.jpg}
+    \caption{Τελικά σημεία Harris-Laplacian για την εικόνα \texttt{solar.jpg}.
+             Η διαδικασία επιλογής κλίμακας απορρίπτει σημεία που δεν
+             μεγιστοποιούν την κανονικοποιημένη LoG απόκριση ως προς την
+             κλίμακα, διατηρώντας μόνο τα πιο σταθερά interest points.}
+    \label{fig:part2_harrislaplace_solar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_2_2_final_blood_cells.jpg}
+    \caption{Τελικά σημεία Harris-Laplacian για την εικόνα
+             \texttt{blood\_cells.jpg}. Η κλίμακα που συνοδεύει κάθε σημείο
+             αποτυπώνεται μέσω της ακτίνας του κύκλου που σχεδιάζεται γύρω από
+             αυτό.}
+    \label{fig:part2_harrislaplace_blood}
+\end{figure}
+
+\subsection{Ανίχνευση Blobs σε Μία Κλίμακα}
+
+\subsubsection{Ορίζουσα του Hessian}
+
+Για τον εντοπισμό blobs, αντί του δομικού τανυστή χρησιμοποιήθηκαν οι δεύτερες
+μερικές παράγωγοι της εξομαλυμένης εικόνας:
+\begin{equation}
+    L_{xx}(x,y;\sigma), \qquad
+    L_{xy}(x,y;\sigma), \qquad
+    L_{yy}(x,y;\sigma)
+\end{equation}
+οι οποίες υπολογίζονται αριθμητικά με επαναληπτική εφαρμογή της
+\texttt{numpy.gradient} πάνω στην εικόνα $I_\sigma = G_\sigma * I$.
+Από αυτές σχηματίζεται ο πίνακας Hessian:
+\begin{equation}
+    H(x,y) =
+    \begin{bmatrix}
+        L_{xx}(x,y;\sigma) & L_{xy}(x,y;\sigma) \\
+        L_{xy}(x,y;\sigma) & L_{yy}(x,y;\sigma)
+    \end{bmatrix}
+\end{equation}
+και ως κριτήριο απόκρισης λαμβάνεται η ορίζουσά του:
+\begin{equation}
+    R(x,y) = \det(H(x,y))
+           = L_{xx}(x,y;\sigma)L_{yy}(x,y;\sigma) - L_{xy}(x,y;\sigma)^2
+\end{equation}
+Η ποσότητα αυτή είναι μεγάλη σε περιοχές όπου η ένταση μεταβάλλεται έντονα
+και στις δύο διευθύνσεις, δηλαδή σε δομές τύπου blob.
+
+\subsubsection{Επιλογή Σημείων Blob}
+
+Η επιλογή των τελικών σημείων blob ακολουθεί ακριβώς την ίδια λογική με την
+ανίχνευση Harris: κρατούνται μόνο όσα pixels είναι τοπικά μέγιστα της
+$\det(H)$ στην ίδια δισκοειδή γειτονιά και ταυτόχρονα υπερβαίνουν σχετικό
+κατώφλι της μορφής
+\begin{equation}
+    R(x,y) > \theta_{\text{blob}} R_{\max}
+\end{equation}
+με $\theta_{\text{blob}} = 0.005$. Έτσι προκύπτει σύνολο σημείων
+$N \times 3$ με μορφή $(x,y,\sigma)$, ώστε να είναι συμβατό με την
+υπόλοιπη σωλήνωση της άσκησης.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_3_solar.jpg}
+    \caption{Αποτελέσματα της ενότητας 2.3 για την εικόνα \texttt{solar.jpg}.
+             Αριστερά φαίνεται η απόκριση $\det(H)$ και δεξιά τα blobs που
+             εντοπίστηκαν σε μία μόνο κλίμακα.}
+    \label{fig:part2_blob_solar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_3_blood_cells.jpg}
+    \caption{Αποτελέσματα της ενότητας 2.3 για την εικόνα
+             \texttt{blood\_cells.jpg}. Ο ανιχνευτής Hessian ανταποκρίνεται
+             έντονα στις σχεδόν κυκλικές δομές των κυττάρων, όπως αναμένεται
+             από έναν blob detector.}
+    \label{fig:part2_blob_blood}
+\end{figure}
+
+\subsection{Πολυκλιμακωτή Ανίχνευση Blobs}
+
+\subsubsection{Hessian-Laplace}
+
+Η πολυκλιμακωτή ανίχνευση blobs επαναλαμβάνει το ίδιο σχήμα με την περίπτωση
+των γωνιών. Πρώτα, για τις κλίμακες
+\begin{equation}
+    \sigma_i = s^i \sigma_0, \qquad i = 0, \dots, N-1
+\end{equation}
+με $\sigma_0 = 2.0$, $s = 1.5$ και $N = 4$, υπολογίζεται σε κάθε επίπεδο η
+απόκριση $\det(H)$ και εξάγονται τα αρχικά υποψήφια blobs μέσω τοπικών
+μεγίστων και σχετικού κατωφλίου. Στη συνέχεια εφαρμόζεται το δεύτερο στάδιο
+Hessian-Laplace: για κάθε υποψήφιο blob ελέγχεται αν η κανονικοποιημένη LoG
+απόκριση $\sigma_i^2 |\text{LoG}|$ είναι μέγιστη ως προς τις γειτονικές
+κλίμακες. Όσα σημεία δεν μεγιστοποιούν αυτή τη μετρική απορρίπτονται.
+
+Η διαδικασία αυτή είναι ιδιαίτερα σημαντική, διότι χωρίς το δεύτερο στάδιο
+η ίδια χωρική δομή θα ανιχνευόταν συχνά σε περισσότερες από μία κλίμακες.
+Η επιβολή μέγιστης απόκρισης ως προς το scale-space επιτρέπει την αντιστοίχιση
+κάθε blob σε μια συγκεκριμένη χαρακτηριστική κλίμακα, κάτι που είναι απαραίτητο
+για τη μετέπειτα εξαγωγή τοπικών περιγραφητών στο Μέρος~3.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_4_final_solar.jpg}
+    \caption{Τελικά blobs Hessian-Laplace για την εικόνα \texttt{solar.jpg}.
+             Η επιλογή χαρακτηριστικής κλίμακας διατηρεί μόνο τις δομές που
+             παραμένουν ισχυρές και σταθερές στο scale-space.}
+    \label{fig:part2_hessianlaplace_solar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{part2_2_4_final_blood_cells.jpg}
+    \caption{Τελικά blobs Hessian-Laplace για την εικόνα
+             \texttt{blood\_cells.jpg}. Οι μεγαλύτεροι κύκλοι αντιστοιχούν σε
+             blobs που επιλέγονται σε χονδρότερες κλίμακες, ενώ οι μικρότεροι
+             σε λεπτότερες τοπικές δομές.}
+    \label{fig:part2_hessianlaplace_blood}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\clearpage
 \begin{thebibliography}{9}
 
 \bibitem{maragos2005}
