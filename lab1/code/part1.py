@@ -3,10 +3,6 @@ import cv2
 import matplotlib.pyplot as plt
 import os
 
-# PART 1: Edge Detection in Grayscale Images
-
-# 1.1.1 Load the image and ensure it is in grayscale format
-
 DATA_DIR    = os.path.join(os.path.dirname(__file__), '..', 'data')
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'results', 'part1')
 PICTURES_DIR = os.path.join(os.path.dirname(__file__), '..', 'docs', 'pictures')
@@ -17,10 +13,14 @@ def save_fig(filename: str) -> None:
     for directory in (RESULTS_DIR, PICTURES_DIR):
         plt.savefig(os.path.join(directory, filename))
 
-_I0_raw = cv2.imread(os.path.join(DATA_DIR, 'edgetest_26.png'), cv2.IMREAD_GRAYSCALE)
-if _I0_raw is None:
+# PART 1: Edge Detection in Grayscale Images
+
+# 1.1.1 Load the image and ensure it is in grayscale format
+
+I0_raw = cv2.imread(os.path.join(DATA_DIR, 'edgetest_26.png'), cv2.IMREAD_GRAYSCALE)
+if I0_raw is None:
     raise FileNotFoundError("Could not load 'edgetest_26.png'.")
-I0 = _I0_raw.astype(np.float64)
+I0 = I0_raw.astype(np.float64) # convert it into a numpy array of type float64
 
 # 1.1.2 Add Gaussian noise based on PSNR to the images
 
@@ -35,11 +35,11 @@ def add_gaussian_noise(image: np.ndarray, psnr_db: float) -> np.ndarray:
     Returns:
     - Noisy image as a 2D numpy array.
     """
-    i_max, i_min = np.max(image), np.min(image)
-    sigma_n = (i_max - i_min) / (10 ** (psnr_db / 20))
-    noise = np.random.normal(loc=0.0, scale=sigma_n, size=image.shape)
+    i_max, i_min = np.max(image), np.min(image) # find max and min pixel values
+    sigma_n = (i_max - i_min) / (10 ** (psnr_db / 20)) # compute noise std
+    noise = np.random.normal(loc=0.0, scale=sigma_n, size=image.shape) # generate Gaussian noise, mean=0, std=sigma_n
 
-    return image + noise
+    return image + noise # add noise to the original image
 
 I_20 = add_gaussian_noise(I0, psnr_db=20)
 I_10 = add_gaussian_noise(I0, psnr_db=10)
@@ -53,7 +53,7 @@ for ax, img, title in zip(
     [I0, I_20, I_10],
     ['Original ($I_0$)', 'Noisy PSNR=20dB', 'Noisy PSNR=10dB']
 ):
-    ax.imshow(img, cmap='gray', vmin=0, vmax=255)
+    ax.imshow(img, cmap='gray', vmin=0, vmax=255) # black is 0, white is 255
     ax.set_title(title)
     ax.axis('off')
 
@@ -62,6 +62,8 @@ plt.close()
 
 # 1.2.1 Filter Kernels
 
+# The Gaussian kernel is used for smoothing the image before edge detection
+
 def gaussian_kernel(sigma: float) -> np.ndarray:
     """
     The rule for n ensures the kernel covers a significant portion of the Gaussian distribution
@@ -69,6 +71,8 @@ def gaussian_kernel(sigma: float) -> np.ndarray:
     n = int(np.ceil(3 * sigma)) * 2 + 1 
     k1d = cv2.getGaussianKernel(n, sigma) # this returns a 1D kernel
     return (k1d @ k1d.T).astype(np.float64) # create a 2D kernel by taking the outer product
+
+# The LoG kernel is used for edge detection by highlighting regions of rapid intensity changes
 
 def log_kernel(sigma: float) -> np.ndarray:
     """
@@ -102,26 +106,31 @@ def EdgeDetect(I: np.ndarray, sigma: float, theta_edge: float,
         D: Binary edge map (bool), True at detected edge pixels.
     """
 
-    # smooth the image with a Gaussian kernel first (needed later on)
+    # smooth the image with a Gaussian kernel first to reduce noise and avoid false edges
     I_smooth = cv2.filter2D(I, ddepth=-1, kernel=gaussian_kernel(sigma),
                         borderType=cv2.BORDER_REFLECT)
-    B = np.ones((3, 3), dtype=np.uint8) # 3x3 structuring element for dilation/erosion
-    
+    B = np.array([[0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]], dtype=np.uint8)
+        
     if laplacian_type == 'linear':
-        # take the convolution of the image with the LoG kernel to get the Laplacian response
+        # take the convolution of the original image with the LoG kernel (smoothing kernel)
         L = cv2.filter2D(I, ddepth=-1, kernel=log_kernel(sigma),
                          borderType=cv2.BORDER_REFLECT)
     elif laplacian_type == 'nonlinear':
+        # we must first smooth the image with a Gaussian kernel, and then apply dilation and erosion to get the morphological Laplacian
         dilated = cv2.dilate(I_smooth, B).astype(np.float64)
         eroded = cv2.erode(I_smooth, B).astype(np.float64)
         L = dilated + eroded - 2 * I_smooth
+        # this is a non linear approximation of the laplacian
     else:
         raise ValueError("laplacian_type must be 'linear' or 'nonlinear'")
     
     # 1.2.3 Zero-crossing detection
+
     # First we find the Binary sign Image (1 where L>=0, 0 where L<0)
     X = (L >= 0).astype(np.uint8)
-    # Then we find the morphological boundary of the sign image
+    # Then we find the morphological gradient of the sign image
     Y = cv2.dilate(X, B) - cv2.erode(X, B) # 1 only at zero-crossings
 
     # 1.2.4 Rejection of weak zero-crossings based on gradient magnitude
@@ -130,7 +139,7 @@ def EdgeDetect(I: np.ndarray, sigma: float, theta_edge: float,
     grad_y, grad_x = np.gradient(I_smooth)
     grad_magnitude = np.sqrt(grad_x**2 + grad_y**2)
 
-    D = (Y == 1) & (grad_magnitude > theta_edge * grad_magnitude.max())
+    D = (Y == 1) & (grad_magnitude > theta_edge * grad_magnitude.max()) # bitwise AND
     return D
 
 # 1.3 Evaluation of Edge Detection results
@@ -143,9 +152,11 @@ def find_ground_truth_edges(image: np.ndarray, theta_real_edge: float) -> np.nda
     we first apply a simple morphological edge detection method to get an edge map.
     Then we keep only the pixels where they exceed a certain threshold based.
     """
-    B = np.ones((3, 3), dtype=np.uint8) # 3x3 structuring element for dilation/erosion
+    B = np.array([[0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]], dtype=np.uint8)
     M = cv2.dilate(image, B).astype(np.float64) - cv2.erode(image, B).astype(np.float64)
-    return M > theta_real_edge * M.max()
+    return M > theta_real_edge 
 
 # 1.3.2 Evaluate the detected edge map D against the ground-truth edge map GT
 
@@ -163,7 +174,7 @@ def evaluate_edges(D: np.ndarray, T: np.ndarray) -> dict:
 # 1.3.3 
 T = find_ground_truth_edges(I0, theta_real_edge=0.1)
 
-# Suggested parameter values from the lab
+# Suggested parameter values
 experiments = [
     (I_20, 'PSNR=20dB', 1.5, 0.2),
     (I_10, 'PSNR=10dB', 3.0, 0.2),
@@ -249,7 +260,7 @@ if I_real is None:
 
 I_real = I_real.astype(np.float64)
 
-# No ground truth for real images → qualitative (visual) evaluation only
+# No ground truth for real images, qualitative (visual) evaluation only
 real_experiments = [
     (1.5, 0.1, 'low σ, low θ'),
     (1.5, 0.3, 'low σ, high θ'),
@@ -278,23 +289,35 @@ for sigma, theta_edge, desc in real_experiments:
     save_fig(fname)
     plt.close()
 
-# 1.5 Sigma sweep: C metric vs sigma for fixed theta_edge=0.2
+# 1.5 2D heatmap: C metric over (sigma, theta_edge) grid
 
-sigmas = np.linspace(0.5, 5.0, 10)
+sigmas      = np.linspace(0.5, 5.0, 10)
+theta_values_sweep = np.linspace(0.05, 0.95, 10)
 
-fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-for ax, (img, label) in zip(axes, [(I_20, 'PSNR=20dB'), (I_10, 'PSNR=10dB')]):
-    for lap_type, color in [('linear', 'blue'), ('nonlinear', 'orange')]:
-        C_scores = [evaluate_edges(EdgeDetect(img, s, 0.2, lap_type), T)['C'] for s in sigmas]
-        ax.plot(sigmas, C_scores, marker='o', color=color, label=lap_type)
-        ax.axvline(x=1.5 if label == 'PSNR=20dB' else 3.0,
-                   linestyle='--', color='gray', alpha=0.6, label='suggested σ')
-    ax.set_xlabel('σ')
-    ax.set_ylabel('C score')
-    ax.set_title(label)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+datasets = [(I_20, 'PSNR=20dB'), (I_10, 'PSNR=10dB')]
+lap_types = ['linear', 'nonlinear']
 
-plt.tight_layout()
+fig, axes = plt.subplots(2, 2, figsize=(13, 10), constrained_layout=True)
+
+for col, (img, label) in enumerate(datasets):
+    for row, lap_type in enumerate(lap_types):
+        # C[i, j] = C score at theta_values_sweep[i], sigmas[j]
+        C_grid = np.array([
+            [evaluate_edges(EdgeDetect(img, s, th, lap_type), T)['C']
+             for s in sigmas]
+            for th in theta_values_sweep
+        ])
+
+        ax = axes[row][col]
+        im = ax.imshow(C_grid, origin='lower', aspect='auto',
+                       extent=[sigmas[0], sigmas[-1],
+                               theta_values_sweep[0], theta_values_sweep[-1]],
+                       vmin=0, vmax=1, cmap='viridis')
+        fig.colorbar(im, ax=ax, label='C score')
+        ax.set_xlabel('σ')
+        ax.set_ylabel('θ_edge')
+        ax.set_title(f'{label} — {lap_type}')
+
+plt.suptitle('C score heatmap over (σ, θ_edge)', fontsize=14)
 save_fig('sigma_sweep.jpg')
 plt.close()
