@@ -138,25 +138,24 @@ def compute_lambda_minus_plus(
 #   2. satisfy R(x, y) > theta_corn * R_max
 
 
-def compute_harris_response(
+def harris_cornerness_criterion(
     lambda_minus: np.ndarray, lambda_plus: np.ndarray, k: float = 0.05
 ) -> np.ndarray:
     """Compute the Harris-Stephens cornerness response R for each pixel."""
     return lambda_minus * lambda_plus - k * (lambda_minus + lambda_plus) ** 2
 
 
-def detect_harris_corners(
+def harris_corners_detector(
     I: np.ndarray,
     sigma: float = 2.0,
     rho: float = 2.5,
     k: float = 0.05,
     theta_corn: float = 0.005,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     Part 2.1.3 implementation.
 
     Returns:
-      R: Harris response image
       corners: Nx3 array with columns [x, y, sigma]
     """
     # 2.1.3(a): Compute J1, J2, J3 from Part 2.1.1.
@@ -166,7 +165,7 @@ def detect_harris_corners(
     lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
 
     # 2.1.3(c): Compute the Harris cornerness criterion R(x, y).
-    R = compute_harris_response(lambda_minus, lambda_plus, k=k)
+    R = harris_cornerness_criterion(lambda_minus, lambda_plus, k=k)
 
     # 2.1.3(d): Keep only local maxima inside a disk of radius ceil(3*sigma).
     ns = int(np.ceil(3 * sigma) * 2 + 1)
@@ -179,29 +178,10 @@ def detect_harris_corners(
 
     ys, xs = np.nonzero(cond1 & cond2)
     corners = np.column_stack((xs, ys, np.full(xs.shape, sigma, dtype=np.float64)))
-    return R, corners.astype(np.float64)
+    return corners.astype(np.float64)
 
 
-# 2.2.1 Build the multi-scale Harris representation
-# Paper scale sequence:
-#   sigma_i = (s ** i) * sigma_0,   i = 0, ..., N - 1
-#   rho_i   = (s ** i) * rho_0,     i = 0, ..., N - 1
-# where sigma_0, rho_0 are the initial scales, s is the scale step,
-# and N is the number of scales.
-
-
-def build_scale_sequence(
-    sigma_0: float = 2.0, rho_0: float = 2.5, s: float = 1.5, N: int = 4
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return the differentiation and integration scales for Part 2.2.1."""
-
-    indices = np.arange(N, dtype=np.float64)
-    sigma_values = sigma_0 * (s ** indices)
-    rho_values = rho_0 * (s ** indices)
-    return sigma_values, rho_values
-
-
-def detect_harris_corners_multiscale(
+def select_harris_laplacian_points(
     I: np.ndarray,
     sigma_0: float = 2.0,
     rho_0: float = 2.5,
@@ -209,64 +189,6 @@ def detect_harris_corners_multiscale(
     N: int = 4,
     k: float = 0.05,
     theta_corn: float = 0.005,
-) -> list[dict]:
-    """
-    Part 2.2.1 implementation.
-
-    Build the Harris responses and corner detections across N scales.
-    This subsection prepares the multi-scale representation only.
-    Scale selection with LoG is added in Part 2.2.2.
-    """
-    # 2.2.1(a): Generate the scale sequence sigma_i and rho_i.
-    sigma_values, rho_values = build_scale_sequence(
-        sigma_0=sigma_0, rho_0=rho_0, s=s, N=N
-    )
-
-    scale_results: list[dict] = []
-
-    # 2.2.1(b): Run the Harris detector independently at each scale level.
-    for i, (sigma_i, rho_i) in enumerate(zip(sigma_values, rho_values)):
-        R_i, corners_i = detect_harris_corners(
-            I,
-            sigma=float(sigma_i),
-            rho=float(rho_i),
-            k=k,
-            theta_corn=theta_corn,
-        )
-        scale_results.append(
-            {
-                "scale_index": i,
-                "sigma": float(sigma_i),
-                "rho": float(rho_i),
-                "R": R_i,
-                "corners": corners_i,
-            }
-        )
-
-    return scale_results
-
-
-# 2.2.2 Select characteristic scale with normalized LoG
-# Paper equation:
-#   |LoG(x, i)| = sigma_i^2 * |Lxx(x, i) + Lyy(x, i)|,  i = 0, ..., N - 1
-# Harris-Laplacian selection:
-#   keep Harris points whose normalized LoG response is maximal across scale.
-
-
-def compute_normalized_log_response(I: np.ndarray, sigma: float) -> np.ndarray:
-    """Compute the scale-normalized LoG magnitude using the Part 1 LoG kernel."""
-    # 2.2.2(a): Build the Laplacian-of-Gaussian kernel at scale sigma.
-    LoG_sigma = log_kernel(sigma)
-
-    # 2.2.2(b): Convolve the image with the LoG kernel, as in Part 1.
-    log_response = convolve(I, LoG_sigma)
-
-    # 2.2.2(c): Form the normalized LoG magnitude sigma^2 * |LoG|.
-    return (sigma**2) * np.abs(log_response)
-
-
-def select_harris_laplacian_points(
-    scale_results: list[dict], I: np.ndarray
 ) -> tuple[list[dict], np.ndarray]:
     """
     Part 2.2.2 implementation.
@@ -278,14 +200,31 @@ def select_harris_laplacian_points(
       updated_scale_results: same per-scale data with LoG responses attached
       selected_points: Nx3 array with columns [x, y, sigma]
     """
-    if not scale_results:
-        return scale_results, np.empty((0, 3), dtype=np.float64)
+    scale_results = []
+    for i in range(N):
+        sigma_i = float((s ** i) * sigma_0)
+        rho_i = float((s ** i) * rho_0)
+        J1_i, J2_i, J3_i = compute_J1_J2_J3(I, sigma=sigma_i, rho=rho_i)
+        lambda_minus_i, lambda_plus_i = compute_lambda_minus_plus(J1_i, J2_i, J3_i)
+        R_i = harris_cornerness_criterion(lambda_minus_i, lambda_plus_i, k=k)
+        corners_i = harris_corners_detector(I, sigma=sigma_i, rho=rho_i, k=k, theta_corn=theta_corn)
+        scale_results.append(
+            {
+                "scale_index": i,
+                "sigma": sigma_i,
+                "rho": rho_i,
+                "R": R_i,
+                "corners": corners_i,
+            }
+        )
 
     # 2.2.2(d): Compute the normalized LoG response image at every scale.
-    log_responses = [
-        compute_normalized_log_response(I, scale_result["sigma"])
-        for scale_result in scale_results
-    ]
+    log_responses = []
+    for scale_result in scale_results:
+        sigma = scale_result["sigma"]
+        LoG_sigma = log_kernel(sigma)
+        log_response = convolve(I, LoG_sigma)
+        log_responses.append((sigma**2) * np.abs(log_response))
 
     for scale_result, log_response in zip(scale_results, log_responses):
         scale_result["LoG"] = log_response
@@ -355,7 +294,7 @@ def compute_Lxx_Lxy_Lyy(
     return Lxx, Lxy, Lyy
 
 
-def compute_hessian_response(
+def hessian_blobness_criterion(
     Lxx: np.ndarray, Lxy: np.ndarray, Lyy: np.ndarray
 ) -> np.ndarray:
     """Compute the determinant of the Hessian matrix at each pixel."""
@@ -365,19 +304,18 @@ def compute_hessian_response(
 # 2.3.2 Blob interest points from Hessian local maxima
 
 
-def detect_hessian_blobs(
+def hessian_blobs_detector(
     I: np.ndarray, sigma: float = 2.0, theta_blob: float = 0.005
-) -> tuple[np.ndarray, np.ndarray]:
+) -> np.ndarray:
     """
     Part 2.3.2 implementation.
 
     Returns:
-      R: Hessian determinant response image
       blobs: Nx3 array with columns [x, y, sigma]
     """
     # 2.3.2(a): Build the Hessian determinant response of Part 2.3.1.
     Lxx, Lxy, Lyy = compute_Lxx_Lxy_Lyy(I, sigma=sigma)
-    R = compute_hessian_response(Lxx, Lxy, Lyy)
+    R = hessian_blobness_criterion(Lxx, Lxy, Lyy)
 
     # 2.3.2(b): Keep local maxima inside a disk neighborhood.
     ns = int(np.ceil(3 * sigma) * 2 + 1)
@@ -390,56 +328,15 @@ def detect_hessian_blobs(
 
     ys, xs = np.nonzero(cond1 & cond2)
     blobs = np.column_stack((xs, ys, np.full(xs.shape, sigma, dtype=np.float64)))
-    return R, blobs.astype(np.float64)
+    return blobs.astype(np.float64)
 
 
-# 2.4.1 Multi-scale blob detection (Hessian-Laplace)
-
-
-def build_blob_scale_sequence(
-    sigma_0: float = 2.0, s: float = 1.5, N: int = 4
-) -> np.ndarray:
-    """Return the sigma sequence for multi-scale blob detection."""
-    indices = np.arange(N, dtype=np.float64)
-    return sigma_0 * (s ** indices)
-
-
-def detect_hessian_blobs_multiscale(
+def select_hessian_laplacian_blobs(
     I: np.ndarray,
     sigma_0: float = 2.0,
     s: float = 1.5,
     N: int = 4,
     theta_blob: float = 0.005,
-) -> list[dict]:
-    """
-    Part 2.4.1 implementation.
-
-    Build Hessian determinant responses and blob detections across N scales.
-    The final scale selection step is added separately with Hessian-Laplace.
-    """
-    sigma_values = build_blob_scale_sequence(sigma_0=sigma_0, s=s, N=N)
-
-    scale_results: list[dict] = []
-    for i, sigma_i in enumerate(sigma_values):
-        R_i, blobs_i = detect_hessian_blobs(
-            I,
-            sigma=float(sigma_i),
-            theta_blob=theta_blob,
-        )
-        scale_results.append(
-            {
-                "scale_index": i,
-                "sigma": float(sigma_i),
-                "R": R_i,
-                "blobs": blobs_i,
-            }
-        )
-
-    return scale_results
-
-
-def select_hessian_laplacian_blobs(
-    scale_results: list[dict], I: np.ndarray
 ) -> tuple[list[dict], np.ndarray]:
     """
     Part 2.4.1 implementation of the Hessian-Laplace selection stage.
@@ -447,13 +344,27 @@ def select_hessian_laplacian_blobs(
     For each blob detected at scale i, keep it only if its normalized LoG
     response is maximal over neighboring scales i-1, i, i+1.
     """
-    if not scale_results:
-        return scale_results, np.empty((0, 3), dtype=np.float64)
+    scale_results = []
+    for i in range(N):
+        sigma_i = float((s ** i) * sigma_0)
+        Lxx_i, Lxy_i, Lyy_i = compute_Lxx_Lxy_Lyy(I, sigma=sigma_i)
+        R_i = hessian_blobness_criterion(Lxx_i, Lxy_i, Lyy_i)
+        blobs_i = hessian_blobs_detector(I, sigma=sigma_i, theta_blob=theta_blob)
+        scale_results.append(
+            {
+                "scale_index": i,
+                "sigma": sigma_i,
+                "R": R_i,
+                "blobs": blobs_i,
+            }
+        )
 
-    log_responses = [
-        compute_normalized_log_response(I, scale_result["sigma"])
-        for scale_result in scale_results
-    ]
+    log_responses = []
+    for scale_result in scale_results:
+        sigma = scale_result["sigma"]
+        LoG_sigma = log_kernel(sigma)
+        log_response = convolve(I, LoG_sigma)
+        log_responses.append((sigma**2) * np.abs(log_response))
 
     for scale_result, log_response in zip(scale_results, log_responses):
         scale_result["LoG"] = log_response
@@ -485,6 +396,32 @@ def select_hessian_laplacian_blobs(
 
     selected_points_array = np.array(selected_points, dtype=np.float64).reshape(-1, 3)
     return scale_results, selected_points_array
+
+
+def harris_laplacian_corners_detector(
+    I: np.ndarray,
+    sigma_0: float = 2.0,
+    rho_0: float = 2.5,
+    s: float = 1.5,
+    N: int = 4,
+    k: float = 0.05,
+    theta_corn: float = 0.005,
+) -> np.ndarray:
+    return select_harris_laplacian_points(
+        I, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
+    )[1]
+
+
+def hessian_laplacian_blobs_detector(
+    I: np.ndarray,
+    sigma_0: float = 2.0,
+    s: float = 1.5,
+    N: int = 4,
+    theta_blob: float = 0.005,
+) -> np.ndarray:
+    return select_hessian_laplacian_blobs(
+        I, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob
+    )[1]
 
 
 def calculate_repeatability(
@@ -546,53 +483,6 @@ def calculate_repeatability(
 
     repeatability = n_matches / min(len(pts1), len(pts2))
     return repeatability, n_matches
-
-
-def collect_multiscale_points(scale_results: list[dict], key: str) -> np.ndarray:
-    points = [scale_result[key] for scale_result in scale_results if len(scale_result[key]) > 0]
-    if not points:
-        return np.empty((0, 3), dtype=np.float64)
-    return np.vstack(points)
-
-
-def harris_points(I: np.ndarray, sigma: float, rho: float, k: float, theta_corn: float) -> np.ndarray:
-    _, points = detect_harris_corners(I, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn)
-    return points
-
-
-def multiscale_harris_points(
-    I: np.ndarray, sigma_0: float, rho_0: float, s: float, N: int, k: float, theta_corn: float
-) -> np.ndarray:
-    scale_results = detect_harris_corners_multiscale(
-        I, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
-    )
-    return collect_multiscale_points(scale_results, "corners")
-
-
-def harris_laplacian_points(
-    I: np.ndarray, sigma_0: float, rho_0: float, s: float, N: int, k: float, theta_corn: float
-) -> np.ndarray:
-    scale_results = detect_harris_corners_multiscale(
-        I, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
-    )
-    _, points = select_harris_laplacian_points(scale_results, I)
-    return points
-
-
-def hessian_points(I: np.ndarray, sigma: float, theta_blob: float) -> np.ndarray:
-    _, points = detect_hessian_blobs(I, sigma=sigma, theta_blob=theta_blob)
-    return points
-
-
-def multiscale_hessian_points(I: np.ndarray, sigma_0: float, s: float, N: int, theta_blob: float) -> np.ndarray:
-    scale_results = detect_hessian_blobs_multiscale(I, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob)
-    return collect_multiscale_points(scale_results, "blobs")
-
-
-def hessian_laplacian_points(I: np.ndarray, sigma_0: float, s: float, N: int, theta_blob: float) -> np.ndarray:
-    scale_results = detect_hessian_blobs_multiscale(I, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob)
-    _, points = select_hessian_laplacian_blobs(scale_results, I)
-    return points
 
 
 if __name__ == "__main__":
@@ -675,9 +565,10 @@ if __name__ == "__main__":
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
-        R, corners = detect_harris_corners(
-            I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn
-        )
+        J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
+        lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
+        R = harris_cornerness_criterion(lambda_minus, lambda_plus, k=k)
+        corners = harris_corners_detector(I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn)
 
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(
@@ -701,15 +592,23 @@ if __name__ == "__main__":
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
-        scale_results = detect_harris_corners_multiscale(
-            I_gray,
-            sigma_0=sigma_0,
-            rho_0=rho_0,
-            s=s,
-            N=N,
-            k=k,
-            theta_corn=theta_corn,
-        )
+        scale_results = []
+        for i in range(N):
+            sigma_i = float((s ** i) * sigma_0)
+            rho_i = float((s ** i) * rho_0)
+            J1_i, J2_i, J3_i = compute_J1_J2_J3(I_gray, sigma=sigma_i, rho=rho_i)
+            lambda_minus_i, lambda_plus_i = compute_lambda_minus_plus(J1_i, J2_i, J3_i)
+            R_i = harris_cornerness_criterion(lambda_minus_i, lambda_plus_i, k=k)
+            corners_i = harris_corners_detector(I_gray, sigma=sigma_i, rho=rho_i, k=k, theta_corn=theta_corn)
+            scale_results.append(
+                {
+                    "scale_index": i,
+                    "sigma": sigma_i,
+                    "rho": rho_i,
+                    "R": R_i,
+                    "corners": corners_i,
+                }
+            )
 
         fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
         fig.suptitle(
@@ -741,7 +640,7 @@ if __name__ == "__main__":
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
-        scale_results = detect_harris_corners_multiscale(
+        scale_results, selected_points = select_harris_laplacian_points(
             I_gray,
             sigma_0=sigma_0,
             rho_0=rho_0,
@@ -749,9 +648,6 @@ if __name__ == "__main__":
             N=N,
             k=k,
             theta_corn=theta_corn,
-        )
-        scale_results, selected_points = select_harris_laplacian_points(
-            scale_results, I_gray
         )
 
         fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
@@ -790,7 +686,9 @@ if __name__ == "__main__":
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
-        R, blobs = detect_hessian_blobs(I_gray, sigma=sigma, theta_blob=theta_blob)
+        Lxx, Lxy, Lyy = compute_Lxx_Lxy_Lyy(I_gray, sigma=sigma)
+        R = hessian_blobness_criterion(Lxx, Lxy, Lyy)
+        blobs = hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob)
 
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(
@@ -814,15 +712,12 @@ if __name__ == "__main__":
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
-        scale_results = detect_hessian_blobs_multiscale(
+        scale_results, selected_blobs = select_hessian_laplacian_blobs(
             I_gray,
             sigma_0=sigma_0,
             s=s,
             N=N,
             theta_blob=theta_blob,
-        )
-        scale_results, selected_blobs = select_hessian_laplacian_blobs(
-            scale_results, I_gray
         )
 
         fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
@@ -857,44 +752,9 @@ if __name__ == "__main__":
         save_fig(f"part2_2_4_final_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # Repeatability evaluation for all detector variants and simple known homographies
-    detector_configs = [
-        (
-            "Harris",
-            lambda I: harris_points(I, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn),
-            f"sigma={sigma}, rho={rho}, k={k}, theta_corn={theta_corn}",
-        ),
-        (
-            "Multi-scale Harris",
-            lambda I: multiscale_harris_points(
-                I, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
-            ),
-            f"sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N}, k={k}, theta_corn={theta_corn}",
-        ),
-        (
-            "Harris-Laplacian",
-            lambda I: harris_laplacian_points(
-                I, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
-            ),
-            f"sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N}, k={k}, theta_corn={theta_corn}",
-        ),
-        (
-            "Hessian",
-            lambda I: hessian_points(I, sigma=sigma, theta_blob=theta_blob),
-            f"sigma={sigma}, theta_blob={theta_blob}",
-        ),
-        (
-            "Multi-scale Hessian",
-            lambda I: multiscale_hessian_points(I, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob),
-            f"sigma_0={sigma_0}, s={s}, N={N}, theta_blob={theta_blob}",
-        ),
-        (
-            "Hessian-Laplacian",
-            lambda I: hessian_laplacian_points(I, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob),
-            f"sigma_0={sigma_0}, s={s}, N={N}, theta_blob={theta_blob}",
-        ),
-    ]
 
+
+    # 2.5 Repeatability evaluation under transformations
     for name in image_names:
         I_gray = images[name]["gray"]
         height, width = I_gray.shape
@@ -915,13 +775,54 @@ if __name__ == "__main__":
         print(f"\nRepeatability for {name}")
         print("Transformations: translation=(20, 15), rotation=45 deg, scaling=0.5 around image center")
 
-        for detector_name, detector_fn, params_text in detector_configs:
-            pts1 = detector_fn(I_gray)
+        detector_results = [
+            (
+                "Harris",
+                f"sigma={sigma}, rho={rho}, k={k}, theta_corn={theta_corn}",
+                harris_corners_detector(I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn),
+            ),
+            (
+                "Harris-Laplacian",
+                f"sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N}, k={k}, theta_corn={theta_corn}",
+                select_harris_laplacian_points(
+                    I_gray, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
+                )[1],
+            ),
+            (
+                "Hessian",
+                f"sigma={sigma}, theta_blob={theta_blob}",
+                hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob),
+            ),
+            (
+                "Hessian-Laplacian",
+                f"sigma_0={sigma_0}, s={s}, N={N}, theta_blob={theta_blob}",
+                select_hessian_laplacian_blobs(
+                    I_gray, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob
+                )[1],
+            ),
+        ]
+
+        for detector_name, params_text, pts1 in detector_results:
             print(f"\n  {detector_name} [{params_text}]")
 
             for transform_name, H in transformations.items():
                 I_transformed = cv2.warpPerspective(I_gray, H, (width, height))
-                pts2 = detector_fn(I_transformed)
+
+                if detector_name == "Harris":
+                    pts2 = harris_corners_detector(
+                        I_transformed, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn
+                    )
+                elif detector_name == "Harris-Laplacian":
+                    pts2 = select_harris_laplacian_points(
+                        I_transformed, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
+                    )[1]
+                elif detector_name == "Hessian":
+                    pts2 = hessian_blobs_detector(I_transformed, sigma=sigma, theta_blob=theta_blob)
+                else:
+                    pts2 = select_hessian_laplacian_blobs(
+                        I_transformed, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob
+                    )[1]
+
                 repeatability, n_matches = calculate_repeatability(pts1, pts2, H, dist_thresh=3)
                 print(
                     f"    {transform_name}: repeatability={repeatability:.3f}, "
