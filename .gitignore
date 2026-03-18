@@ -201,6 +201,10 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Part 3 dataset
+/Data/
+/Fold_Indices.mat
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
