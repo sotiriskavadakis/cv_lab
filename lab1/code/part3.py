@@ -1,18 +1,20 @@
 import os
-import copy
-import random
+import copy # for deep copying the model before fine-tuning
+import random # for random rotations
+import time
 import numpy as np
 import cv2
 import torch
+import torch.nn as nn
 import torchvision
-from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
-from torchvision.models.feature_extraction import create_feature_extractor
-from sklearn.model_selection import train_test_split
+from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights # load pretrained weights and transforms
+from torchvision.models.feature_extraction import create_feature_extractor # extract features from intermediate layers
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.manifold import TSNE
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from sklearn.decomposition import PCA
+from peft import LoraConfig, get_peft_model
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -29,55 +31,71 @@ def save_fig(filename: str) -> None:
 classes = ['car', 'person', 'bike']
 
 # 3.2.1 Load MobileNetV3-Small and its pretrained weights
-weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1
-model = torchvision.models.mobilenet_v3_small(weights=weights)
-model.eval()  # removes dropout and batch normalization layers for inference
 
+weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1 # load pretrained weights trained on ImageNet-1K
+model = torchvision.models.mobilenet_v3_small(weights=weights) # load the model architecture and initialize with pretrained weights
+model.eval()  # removes dropout and batch normalization layers: we only want inference mode
+
+print("MobileNetV3-Small architecture:")
+for name, module in model.named_modules():
+    print(f"  {name}: {module.__class__.__name__}")
+
+# this should be applied to every input image before feeding it to the model, to ensure it has the same size and normalization as the training data
 preprocess = weights.transforms()  # resizing, cropping, normalization used during training
 
 images, labels, paths = [], [], []
-for label, cls in enumerate(classes):
-    cls_dir = os.path.join(DATA_DIR, cls)
-    for img_name in sorted(os.listdir(cls_dir)):
+for label, cls in enumerate(classes): # for each class take corresponding label (0, 1, 2) and class name
+    cls_dir = os.path.join(DATA_DIR, cls) # path to the class directory
+    for img_name in sorted(os.listdir(cls_dir)): # for each image in the class directory
         if not img_name.lower().endswith(('.jpg', '.jpeg', '.png')):
             continue
         img_path = os.path.join(cls_dir, img_name)
-        img = torchvision.io.read_image(img_path)
-        if img.shape[0] == 1:
-            img = img.repeat(3, 1, 1)
-        elif img.shape[0] == 4:
-            img = img[:3]
-        images.append(preprocess(img))
-        labels.append(label)
+        img = torchvision.io.read_image(img_path, mode=torchvision.io.ImageReadMode.RGB) # read image as RGB tensor (C, H, W) with values in [0, 255]
+        images.append(preprocess(img)) # preprocess the image and add to list (C, H, W) with values in [0, 1]
+        labels.append(label) # add label of image to list
         paths.append(img_path)
 
-labels = np.array(labels)
+labels = np.array(labels) # convert to numpy array for easier indexing later
 paths  = np.array(paths)
 
 # 3.2.2 Extract features from the 'avgpool' layer of MobileNetV3-Small
+
+# create a feature extractor that returns the output of the avgpool layer (after global average pooling, before the final classifier)
 feature_extractor = create_feature_extractor(model, return_nodes={'avgpool': 'avgpool'})
 
-features = []
-with torch.no_grad():
-    for img in images:
-        output = feature_extractor(img.unsqueeze(0))   # {'avgpool': (1, 576, 1, 1)}
-        features.append(output['avgpool'].squeeze().numpy())  # (576,)
+features = [] # feature vectors will be stored here
+with torch.no_grad(): # dont compute gradients
+    for img in images: # for each preprocessed image tensor (C, H, W)
+        output = feature_extractor(img.unsqueeze(0)) # forward pass through the network and get the avgpool output, unsqueeze to add batch dimension (1, C, H, W)
+        features.append(output['avgpool'].squeeze().numpy())  # add feature vector to list
 
 features = np.array(features)
 
 # 3.2.3 Split the dataset, train an RBF SVM, and evaluate its performance
+
 indices = np.arange(len(features))
 idx_train, idx_test, y_train, y_test = train_test_split(
     indices, labels, test_size=0.3, random_state=42, stratify=labels
-)
+) # with stratification to maintain class balance in train and test sets
 
 # Normalize features — SVMs are sensitive to input scale
-scaler  = StandardScaler()
+scaler  = StandardScaler() 
 X_train = scaler.fit_transform(features[idx_train])
 X_test  = scaler.transform(features[idx_test])
 
-svm = SVC(kernel='rbf', C=10, gamma='scale', decision_function_shape='ovr')
-svm.fit(X_train, y_train)
+# Grid search over SVM hyperparameters with 5-fold stratified cross-validation
+param_grid = {
+    'C':     [0.1, 1, 10, 100, 1000],
+    'gamma': ['scale', 'auto', 1e-3, 1e-2, 1e-1],
+}
+grid_search = GridSearchCV(
+    SVC(kernel='rbf', decision_function_shape='ovr'),
+    param_grid, cv=5, scoring='accuracy', n_jobs=-1, verbose=1,
+)
+grid_search.fit(X_train, y_train)
+svm = grid_search.best_estimator_
+best_svm_params = grid_search.best_params_  # reuse everywhere
+print(f"Best SVM params: {best_svm_params}  (CV acc: {grid_search.best_score_*100:.2f}%)")
 
 y_pred   = svm.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
@@ -96,6 +114,8 @@ save_fig('confusion_matrix.jpg')
 plt.close()
 
 # 3.2.4 Visualize feature maps from intermediate layers
+
+# which intermediate layers of the network to extract feature maps from
 layer_nodes = {
     'features.1':  'layer_1',
     'features.3':  'layer_3',
@@ -104,6 +124,7 @@ layer_nodes = {
 }
 intermediate_extractor = create_feature_extractor(model, return_nodes=layer_nodes)
 
+# select one sample from each class to visualize the feature maps
 sample_per_class = {}
 for img, lbl in zip(images, labels):
     cls = classes[lbl]
@@ -133,28 +154,22 @@ for cls, img in sample_per_class.items():
 # 3.2.5 Robustness experiments
 
 def add_gaussian_noise(img_tensor, std=0.1):
-    """Add Gaussian noise to a preprocessed tensor."""
-    noise = torch.randn_like(img_tensor) * std
-    return torch.clamp(img_tensor + noise, 0, 1)
+    return img_tensor + torch.randn_like(img_tensor) * std
 
 def random_rotation(img_tensor):
-    """Rotate tensor by a random angle in [-45, 45] degrees."""
     angle = random.uniform(-45, 45)
     return torchvision.transforms.functional.rotate(img_tensor, angle)
 
 def load_and_augment(augment_fn=None):
-    """Load images with optional augmentation."""
     imgs, lbls = [], []
     for label, cls in enumerate(classes):
-        cls_dir = os.path.join(DATA_DIR, cls)
-        for img_name in sorted(os.listdir(cls_dir)):
+        for img_name in sorted(os.listdir(os.path.join(DATA_DIR, cls))):
             if not img_name.lower().endswith(('.jpg', '.jpeg', '.png')):
                 continue
-            img = torchvision.io.read_image(os.path.join(cls_dir, img_name))
-            if img.shape[0] == 1:
-                img = img.repeat(3, 1, 1)
-            elif img.shape[0] == 4:
-                img = img[:3]
+            img = torchvision.io.read_image(
+                os.path.join(DATA_DIR, cls, img_name),
+                mode=torchvision.io.ImageReadMode.RGB,
+            )
             img = preprocess(img)
             if augment_fn:
                 img = augment_fn(img)
@@ -163,218 +178,291 @@ def load_and_augment(augment_fn=None):
     return imgs, np.array(lbls)
 
 def evaluate_pipeline(imgs, lbls, label):
-    """Extract features, split, train SVM, print accuracy."""
     feats = []
     with torch.no_grad():
         for img in imgs:
             out = feature_extractor(img.unsqueeze(0))
             feats.append(out['avgpool'].squeeze().numpy())
     feats = np.array(feats)
-
-    Xtr, Xte, ytr, yte = train_test_split(feats, lbls, test_size=0.3,
-                                           random_state=42, stratify=lbls)
+    Xtr, Xte, ytr, yte = train_test_split(
+        feats, lbls, test_size=0.3, random_state=42, stratify=lbls
+    )
     sc = StandardScaler()
-    Xtr = sc.fit_transform(Xtr)
-    Xte = sc.transform(Xte)
-
-    clf = SVC(kernel='rbf', C=10, gamma='scale', decision_function_shape='ovr')
+    Xtr, Xte = sc.fit_transform(Xtr), sc.transform(Xte)
+    clf = SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params)
     clf.fit(Xtr, ytr)
-    acc = accuracy_score(yte, clf.predict(Xte))
-    print(f"{label} accuracy: {acc*100:.2f}%")
+    print(f"{label} accuracy: {accuracy_score(yte, clf.predict(Xte))*100:.2f}%")
 
-imgs_noise, lbls_noise = load_and_augment(augment_fn=add_gaussian_noise)
-imgs_rot,   lbls_rot   = load_and_augment(augment_fn=random_rotation)
+evaluate_pipeline(*load_and_augment(add_gaussian_noise), "Gaussian noise")
+evaluate_pipeline(*load_and_augment(random_rotation),    "Random rotation")
 
-evaluate_pipeline(imgs_noise, lbls_noise, "Gaussian noise")
-evaluate_pipeline(imgs_rot,   lbls_rot,   "Random rotation")
+# 3.2.6 (Bonus) Four-way comparison: Frozen+SVM / LoRA+SVM / Frozen+MLP / LoRA+MLP
 
-# 3.2.5b Robustness curve: accuracy vs noise std
-base_imgs, base_lbls = load_and_augment(augment_fn=None)
-noise_levels, noise_accuracies = np.linspace(0.0, 1.0, 10), []
+# for MacOS with Apple Silicon use mps device
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+print(f"\nTraining device: {device}")
 
-for std in noise_levels:
-    imgs = [add_gaussian_noise(img, std) if std > 0.0 else img for img in base_imgs]
-    feats = []
+X_all = torch.stack(images)
+y_all = torch.tensor(labels, dtype=torch.long)
+train_idx_tensor = torch.tensor(idx_train)
+
+
+def train_mlp(feat_train, y_train_t, feat_test, y_test_t,
+              epochs=500, batch_size=32, lr=1e-3):
+    """Train MLP head on pre-extracted features."""
+    head = nn.Sequential(
+        nn.Linear(576, 256), nn.ReLU(), nn.Dropout(0.3),
+        nn.Linear(256, 128), nn.ReLU(),
+        nn.Linear(128, len(classes)),
+    ).to(device)
+    optimizer = torch.optim.AdamW(head.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+    criterion = nn.CrossEntropyLoss()
+
+    X_tr = torch.tensor(feat_train, dtype=torch.float32)
+    y_tr = torch.tensor(y_train_t, dtype=torch.long)
+
+    head.train()
+    t0 = time.time()
+    for epoch in range(epochs):
+        perm = torch.randperm(len(X_tr))
+        for start in range(0, len(perm), batch_size):
+            idx = perm[start : start + batch_size]
+            optimizer.zero_grad()
+            criterion(head(X_tr[idx].to(device)), y_tr[idx].to(device)).backward()
+            optimizer.step()
+        scheduler.step()
+        if (epoch + 1) % 100 == 0:
+            print(f"  epoch {epoch+1}/{epochs}")
+    train_time = time.time() - t0
+
+    head.eval()
     with torch.no_grad():
-        for img in imgs:
-            out = feature_extractor(img.unsqueeze(0))
-            feats.append(out['avgpool'].squeeze().numpy())
-    feats = np.array(feats)
+        preds = head(torch.tensor(feat_test, dtype=torch.float32).to(device)).argmax(1).cpu().numpy()
+    acc = accuracy_score(y_test, preds)
+    f1 = f1_score(y_test, preds, average='macro')
+    return head, acc, f1, preds, train_time
 
-    Xtr, Xte, ytr, yte = train_test_split(feats, base_lbls, test_size=0.3,
-                                           random_state=42, stratify=base_lbls)
-    sc = StandardScaler()
-    Xtr = sc.fit_transform(Xtr)
-    Xte = sc.transform(Xte)
 
-    clf = SVC(kernel='rbf', C=10, gamma='scale', decision_function_shape='ovr')
-    clf.fit(Xtr, ytr)
-    noise_accuracies.append(accuracy_score(yte, clf.predict(Xte)) * 100)
-    print(f"  noise std={std:.2f} → {noise_accuracies[-1]:.2f}%")
+# (A) Baseline: frozen backbone + SVM (already trained above)
+svm_f1 = f1_score(y_test, y_pred, average='macro')
+t0 = time.time()
+SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params).fit(X_train, y_train)
+svm_time = time.time() - t0
+print(f"\n[Baseline] Frozen+SVM  — Acc: {accuracy*100:.2f}%  F1: {svm_f1:.4f}")
 
-fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(noise_levels, noise_accuracies, marker='o', linewidth=2, color='#e74c3c')
-ax.axhline(y=noise_accuracies[0], linestyle='--', color='gray', alpha=0.6, label='No noise baseline')
-ax.set_xlabel('Gaussian noise std')
-ax.set_ylabel('Accuracy (%)')
-ax.set_title('Robustness of MobileNet+SVM to Gaussian Noise')
-ax.legend()
-ax.grid(True, alpha=0.3)
-plt.tight_layout()
-save_fig('robustness_curve.jpg')
-plt.close()
+# (B) LoRA backbone adaptation (train end-to-end to adapt features)
+print("\n--- Training: LoRA backbone adaptation ---")
+lora_backbone = copy.deepcopy(model)
+for p in lora_backbone.parameters():
+    p.requires_grad = False
+lora_backbone = get_peft_model(lora_backbone, LoraConfig(
+    r=8, lora_alpha=16, target_modules="all-linear",
+    lora_dropout=0.1, bias='none',
+))
+lora_backbone.print_trainable_parameters()
+lora_head = nn.Sequential(
+    nn.Linear(576, 256), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(256, 128), nn.ReLU(),
+    nn.Linear(128, len(classes)),
+).to(device)
+lora_backbone.to(device)
 
-# 3.2.6 t-SNE / PCA visualization of avgpool features
-colors = ['#e74c3c', '#3498db', '#2ecc71']
+optimizer = torch.optim.AdamW([
+    {'params': lora_head.parameters(), 'lr': 5e-4},
+    {'params': [p for p in lora_backbone.parameters() if p.requires_grad], 'lr': 5e-5},
+], weight_decay=1e-4)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50)
+criterion = nn.CrossEntropyLoss()
+augment = torchvision.transforms.RandomHorizontalFlip(p=0.5)
 
-n_pca     = min(50, features.shape[1], features.shape[0] - 1)
-pca_feats = PCA(n_components=n_pca).fit_transform(features)
-pca_2d    = PCA(n_components=2).fit_transform(features)
+lora_head.train()
+lora_backbone.eval()  # keep BN stats frozen
+t0 = time.time()
+for epoch in range(50):
+    perm = train_idx_tensor[torch.randperm(len(train_idx_tensor))]
+    for start in range(0, len(perm), 8):
+        idx = perm[start : start + 8]
+        x = augment(X_all[idx]).to(device)
+        feat = lora_backbone.avgpool(lora_backbone.features(x)).flatten(1)
+        optimizer.zero_grad()
+        criterion(lora_head(feat), y_all[idx].to(device)).backward()
+        optimizer.step()
+    scheduler.step()
+    if (epoch + 1) % 10 == 0:
+        print(f"  epoch {epoch+1}/50")
+lora_backbone_time = time.time() - t0
 
-tsne     = TSNE(n_components=2, perplexity=min(30, len(features) // 3),
-                random_state=42, max_iter=1000)
-embedded = tsne.fit_transform(pca_feats)
+# Extract LoRA-adapted features
+lora_backbone.eval()
+lora_feats = []
+with torch.no_grad():
+    for img in images:
+        feat = lora_backbone.avgpool(lora_backbone.features(img.unsqueeze(0).to(device))).flatten(1)
+        lora_feats.append(feat.cpu().squeeze().numpy())
+lora_feats = np.array(lora_feats)
+sc_lora = StandardScaler()
+X_tr_lora = sc_lora.fit_transform(lora_feats[idx_train])
+X_te_lora = sc_lora.transform(lora_feats[idx_test])
+
+# (C) LoRA + SVM
+print("\n--- Evaluating: LoRA + SVM ---")
+t0 = time.time()
+svm_lora = SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params)
+svm_lora.fit(X_tr_lora, y_train)
+lora_svm_time = lora_backbone_time + (time.time() - t0)
+lora_svm_preds = svm_lora.predict(X_te_lora)
+lora_svm_acc = accuracy_score(y_test, lora_svm_preds)
+lora_svm_f1 = f1_score(y_test, lora_svm_preds, average='macro')
+print(f"[LoRA+SVM] Acc: {lora_svm_acc*100:.2f}%  F1: {lora_svm_f1:.4f}  Time: {lora_svm_time:.1f}s")
+
+# (D) LoRA + MLP: train MLP on LoRA-adapted features
+print("\n--- Training: LoRA + MLP (on pre-extracted features) ---")
+lora_head, lora_acc, lora_f1, lora_preds, lora_mlp_time = train_mlp(
+    X_tr_lora, y_train, X_te_lora, y_test,
+)
+lora_time = lora_backbone_time + lora_mlp_time
+print(f"[LoRA+MLP] Acc: {lora_acc*100:.2f}%  F1: {lora_f1:.4f}  Time: {lora_time:.1f}s")
+
+# (E) Frozen + MLP: train MLP on frozen features
+print("\n--- Training: Frozen + MLP (on pre-extracted features) ---")
+frozen_head, nh_acc, nh_f1, nh_preds, nh_time = train_mlp(
+    X_train, y_train, X_test, y_test,
+)
+print(f"[Frozen+MLP] Acc: {nh_acc*100:.2f}%  F1: {nh_f1:.4f}  Time: {nh_time:.1f}s")
+
+# --- Comparison table ---------------------------------------------------------
+results = [
+    ("Frozen + SVM (Baseline)", accuracy,     svm_f1,      svm_time),
+    ("LoRA + SVM",              lora_svm_acc, lora_svm_f1, lora_svm_time),
+    ("Frozen + MLP",            nh_acc,       nh_f1,       nh_time),
+    ("LoRA + MLP",              lora_acc,     lora_f1,     lora_time),
+]
+
+print("\n" + "=" * 65)
+print(f"{'Method':<28} {'Accuracy':>10} {'F1-Score':>10} {'Time (s)':>10}")
+print("-" * 65)
+for name, a, f, t in results:
+    print(f"{name:<28} {a*100:>9.2f}% {f:>10.4f} {t:>10.1f}")
+print("=" * 65)
+
+fig, ax = plt.subplots(figsize=(9, 3))
+ax.axis('off')
+table = ax.table(
+    cellText=[[n, f"{a*100:.2f}%", f"{f:.4f}", f"{t:.1f}s"] for n, a, f, t in results],
+    colLabels=["Method", "Accuracy", "F1-Score", "Training Time"],
+    cellLoc='center', loc='center',
+)
+table.auto_set_font_size(False); table.set_fontsize(11); table.scale(1.2, 1.6)
+ax.set_title("4-Way Comparison: Feature Extractor × Classifier",
+             fontsize=13, fontweight='bold', pad=20)
+plt.tight_layout(); save_fig('comparison_table.jpg'); plt.close()
+
+# 3.2.7 Grad-CAM: frozen vs LoRA comparison
+
+# implementing the findings of this paper https://arxiv.org/pdf/1610.02391
+# used for explainability reasons
+
+def setup_gradcam(target_model, layer_path):
+    grads, acts = [], []
+
+    def _hook(_module, _input, output):
+        acts.append(output)
+        if output.requires_grad:
+            output.register_hook(lambda g: grads.append(g))
+
+    # Resolve dotted layer path (e.g. 'backbone.base_model.model.features.12')
+    layer = target_model
+    for p in layer_path.split('.'):
+        layer = layer[int(p)] if p.isdigit() else getattr(layer, p)
+    layer.register_forward_hook(_hook)
+
+    def run(img_tensor):
+        grads.clear(); acts.clear()
+        inp = img_tensor.unsqueeze(0).requires_grad_(True)
+        out = target_model(inp)
+        target_model.zero_grad()
+        out[0, out.argmax(1).item()].backward()
+        g, a = grads[0].squeeze(0), acts[0].squeeze(0)
+        cam = torch.relu((g.mean(dim=(1, 2))[:, None, None] * a).sum(0))
+        cam = cam.detach().cpu().numpy()
+        cam -= cam.min()
+        return cam / cam.max() if cam.max() > 0 else cam
+
+    return run
+
+
+def plot_gradcam_comparison(img_rgb, cam_frozen, cam_lora, title, filename):
+    h, w = img_rgb.shape[:2]
+    cam_f = cv2.resize(cam_frozen, (w, h))
+    cam_l = cv2.resize(cam_lora, (w, h))
+    heatmap_l = cv2.cvtColor(
+        cv2.applyColorMap(np.uint8(255 * cam_l), cv2.COLORMAP_JET), cv2.COLOR_BGR2RGB
+    )
+    overlay = (0.5 * img_rgb + 0.5 * heatmap_l).astype(np.uint8)
+
+    fig, axes = plt.subplots(1, 4, figsize=(20, 4))
+    fig.suptitle(title, fontsize=13, fontweight='bold')
+    for ax, data, cmap, lbl in [
+        (axes[0], img_rgb, None,  'Original'),
+        (axes[1], cam_f,   'jet', 'Frozen Backbone'),
+        (axes[2], cam_l,   'jet', 'LoRA + MLP'),
+        (axes[3], overlay, None,  'LoRA Overlay'),
+    ]:
+        ax.imshow(data, cmap=cmap); ax.set_title(lbl); ax.axis('off')
+    plt.tight_layout(); save_fig(filename); plt.close()
+
+
+run_gradcam_frozen = setup_gradcam(model, 'features.12')
+run_gradcam_lora   = setup_gradcam(lora_backbone, 'base_model.model.features.12')
+
+# Per-class Grad-CAM comparison
+for cls, img in sample_per_class.items():
+    img_rgb = cv2.cvtColor(cv2.imread(paths[labels == classes.index(cls)][0]), cv2.COLOR_BGR2RGB)
+    plot_gradcam_comparison(
+        img_rgb, run_gradcam_frozen(img), run_gradcam_lora(img.to(device)),
+        f'Grad-CAM Comparison — class: {cls}', f'gradcam_comparison_{cls}.jpg',
+    )
+    print(f"[{cls}] Grad-CAM comparison saved.")
+
+# Misclassified samples Grad-CAM
+wrong = y_pred != y_test
+if not wrong.any():
+    print("No misclassified samples!")
+else:
+    print(f"Found {wrong.sum()} misclassified sample(s). Running Grad-CAM...")
+    for i, (idx, t_lbl, p_lbl) in enumerate(
+        zip(idx_test[wrong], y_test[wrong], y_pred[wrong])
+    ):
+        img_rgb = cv2.cvtColor(cv2.imread(paths[idx]), cv2.COLOR_BGR2RGB)
+        t_name, p_name = classes[t_lbl], classes[p_lbl]
+        plot_gradcam_comparison(
+            img_rgb, run_gradcam_frozen(images[idx]), run_gradcam_lora(images[idx].to(device)),
+            f'Grad-CAM — MISCLASSIFIED\nTrue: {t_name}  |  Predicted: {p_name}',
+            f'gradcam_misclassified_{i}_{t_name}_as_{p_name}.jpg',
+        )
+        print(f"  {t_name} → {p_name}: saved.")
+
+# 3.2.8 PCA: frozen vs LoRA-adapted features
+colors = ['red', 'green', 'blue']
+pca_frozen = PCA(n_components=2).fit_transform(features)
+pca_lora   = PCA(n_components=2).fit_transform(lora_feats)
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-for ax, proj, title, xlabel, ylabel in [
-    (axes[0], pca_2d,   'PCA (linear)',       'PC 1',        'PC 2'),
-    (axes[1], embedded, 't-SNE (non-linear)', 't-SNE dim 1', 't-SNE dim 2'),
+for ax, proj, title in [
+    (axes[0], pca_frozen, 'PCA — Frozen Backbone'),
+    (axes[1], pca_lora,   'PCA — LoRA Backbone'),
 ]:
     for lbl, cls, color in zip(range(len(classes)), classes, colors):
         mask = labels == lbl
-        ax.scatter(proj[mask, 0], proj[mask, 1],
-                   c=color, label=cls, s=60, alpha=0.85, edgecolors='white', linewidths=0.5)
+        ax.scatter(proj[mask, 0], proj[mask, 1], c=color, label=cls,
+                   s=60, alpha=0.85, edgecolors='white', linewidths=0.5)
     ax.legend(fontsize=11)
-    ax.set_title(f'{title}\nMobileNetV3-Small avgpool features (576-dim → 2-dim)', fontsize=12)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.3)
+    ax.set_title(f'{title}\navgpool features (576-dim → 2-dim)', fontsize=12)
+    ax.set_xlabel('PC 1'); ax.set_ylabel('PC 2'); ax.grid(True, alpha=0.3)
 
-plt.tight_layout()
-save_fig('tsne_pca_features.jpg')
-plt.close()
+plt.suptitle('Feature Clustering: Frozen vs LoRA-adapted Backbone',
+             fontsize=15, fontweight='bold')
+plt.tight_layout(); save_fig('tsne_pca_frozen_vs_lora.jpg'); plt.close()
 
-# 3.2.7 Fine-tuning: unfreeze last blocks of MobileNet + 3-class head
-device   = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
-print(f"Fine-tuning on: {device}")
-
-ft_model = copy.deepcopy(model).to(device)
-
-for param in ft_model.parameters():
-    param.requires_grad = False
-for param in ft_model.features[9:].parameters():
-    param.requires_grad = True
-ft_model.classifier[-1] = torch.nn.Linear(1024, len(classes)).to(device)
-
-X_ft = torch.stack(images)
-y_ft = torch.tensor(labels, dtype=torch.long)
-
-optimizer = torch.optim.Adam(
-    filter(lambda p: p.requires_grad, ft_model.parameters()), lr=1e-4
-)
-criterion = torch.nn.CrossEntropyLoss()
-
-BATCH, EPOCHS = 32, 20
-train_idx_tensor = torch.tensor(idx_train)
-
-ft_model.train()
-for epoch in range(EPOCHS):
-    perm = train_idx_tensor[torch.randperm(len(train_idx_tensor))]
-    for start in range(0, len(perm), BATCH):
-        batch_idx = perm[start:start + BATCH]
-        x = X_ft[batch_idx].to(device)
-        y = y_ft[batch_idx].to(device)
-        optimizer.zero_grad()
-        criterion(ft_model(x), y).backward()
-        optimizer.step()
-    if (epoch + 1) % 5 == 0:
-        print(f"  epoch {epoch+1}/{EPOCHS} done")
-
-ft_model.eval()
-with torch.no_grad():
-    preds = ft_model(X_ft[idx_test].to(device)).argmax(dim=1).cpu()
-ft_acc = (preds == y_ft[idx_test]).float().mean().item()
-
-print(f"\nFrozen MobileNet + SVM accuracy : {accuracy*100:.2f}%")
-print(f"Fine-tuned MobileNet accuracy   : {ft_acc*100:.2f}%")
-
-# 3.2.8 Grad-CAM
-# Target: last conv block before avgpool (features.12)
-# Hooks must be registered on the original model (not ft_model) since we use it for feature extraction
-target_layer = model.features[12]
-gradients, activations = [], []
-
-def _save_gradient(grad):
-    gradients.append(grad)
-
-def _forward_hook(module, input, output):
-    activations.append(output)
-    if output.requires_grad:
-        output.register_hook(_save_gradient)
-
-target_layer.register_forward_hook(_forward_hook)
-
-def run_gradcam(img_tensor):
-    """Return a normalized (0-1) CAM for a single preprocessed image tensor."""
-    gradients.clear()
-    activations.clear()
-    out   = model(img_tensor.unsqueeze(0))
-    score = out[0, out.argmax(dim=1).item()]
-    model.zero_grad()
-    score.backward()
-    grad = gradients[0].squeeze(0)   # (C, H, W)
-    act  = activations[0].squeeze(0) # (C, H, W)
-    cam  = torch.relu((grad.mean(dim=(1, 2))[:, None, None] * act).sum(dim=0))
-    cam  = cam.detach().numpy()
-    cam -= cam.min()
-    if cam.max() > 0:
-        cam /= cam.max()
-    return cam
-
-def plot_gradcam(img_rgb, cam, title, filename):
-    h, w = img_rgb.shape[:2]
-    cam_resized = cv2.resize(cam, (w, h))
-    heatmap = cv2.applyColorMap(np.uint8(255 * cam_resized), cv2.COLORMAP_JET)
-    heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-    overlay = (0.5 * img_rgb + 0.5 * heatmap).astype(np.uint8)
-
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-    fig.suptitle(title, fontsize=13, fontweight='bold')
-    axes[0].imshow(img_rgb);                   axes[0].set_title('Original'); axes[0].axis('off')
-    axes[1].imshow(cam_resized, cmap='jet');   axes[1].set_title('Grad-CAM'); axes[1].axis('off')
-    axes[2].imshow(overlay);                   axes[2].set_title('Overlay');  axes[2].axis('off')
-    plt.tight_layout()
-    save_fig(filename)
-    plt.close()
-
-# Per-class Grad-CAM on the first sample of each class
-for cls, img in sample_per_class.items():
-    img_path = paths[labels == classes.index(cls)][0]
-    img_bgr  = cv2.imread(img_path)
-    img_rgb  = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    cam      = run_gradcam(img)
-    plot_gradcam(img_rgb, cam,
-                 title=f'Grad-CAM — class: {cls}',
-                 filename=f'gradcam_{cls}.jpg')
-    print(f"[{cls}] Grad-CAM saved.")
-
-# Grad-CAM on SVM-misclassified test samples
-wrong_mask    = y_pred != y_test
-wrong_indices = idx_test[wrong_mask]
-wrong_true    = y_test[wrong_mask]
-wrong_pred    = y_pred[wrong_mask]
-
-if len(wrong_indices) == 0:
-    print("No misclassified samples — perfect SVM accuracy on test set!")
-else:
-    print(f"Found {len(wrong_indices)} misclassified sample(s). Running Grad-CAM...")
-    for idx, true_lbl, pred_lbl in zip(wrong_indices, wrong_true, wrong_pred):
-        img_bgr   = cv2.imread(paths[idx])
-        img_rgb   = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        cam       = run_gradcam(images[idx])
-        true_name = classes[true_lbl]
-        pred_name = classes[pred_lbl]
-        plot_gradcam(img_rgb, cam,
-                     title=f'Grad-CAM — MISCLASSIFIED\nTrue: {true_name}  |  SVM predicted: {pred_name}',
-                     filename=f'gradcam_misclassified_{true_name}_as_{pred_name}.jpg')
-        print(f"  misclassified {true_name} → {pred_name}: Grad-CAM saved.")
+print("\nAll done. Results saved to:", RESULTS_DIR)
