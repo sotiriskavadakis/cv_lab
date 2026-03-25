@@ -506,10 +506,11 @@ if __name__ == "__main__":
             "rgb": cv2.cvtColor(image_rgb_raw, cv2.COLOR_BGR2RGB),
         }
 
-    # 2.1.1 Visualize J1, J2, J3
     for name in image_names:
         I_gray = images[name]["gray"]
+        I_rgb = images[name]["rgb"]
 
+        # 2.1.1 Visualize J1, J2, J3
         J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
 
         fig, ax = plt.subplots(1, 3, figsize=(14, 4))
@@ -535,10 +536,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_1_1_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.1.2 Visualize lambda_- and lambda_+
-    for name in image_names:
-        I_gray = images[name]["gray"]
-
+        # 2.1.2 Visualize lambda_- and lambda_+
         J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
         lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
 
@@ -561,10 +559,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_1_2_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.1.3 Visualize Harris responses and corners
-    for name in image_names:
-        I_gray = images[name]["gray"]
-        I_rgb = images[name]["rgb"]
+        # 2.1.3 Visualize Harris responses and corners
         J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
         lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
         R = harris_cornerness_criterion(lambda_minus, lambda_plus, k=k)
@@ -588,10 +583,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_1_3_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.2.1 Visualize multi-scale Harris corners
-    for name in image_names:
-        I_gray = images[name]["gray"]
-        I_rgb = images[name]["rgb"]
+        # 2.2.1 Visualize multi-scale Harris corners
         scale_results = []
         for i in range(N):
             sigma_i = float((s ** i) * sigma_0)
@@ -636,10 +628,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_2_1_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.2.2 Visualize Harris-Laplacian scale selection
-    for name in image_names:
-        I_gray = images[name]["gray"]
-        I_rgb = images[name]["rgb"]
+        # 2.2.2 Visualize Harris-Laplacian scale selection
         scale_results, selected_points = select_harris_laplacian_points(
             I_gray,
             sigma_0=sigma_0,
@@ -682,10 +671,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_2_2_final_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.3 Visualize Hessian determinant blobs
-    for name in image_names:
-        I_gray = images[name]["gray"]
-        I_rgb = images[name]["rgb"]
+        # 2.3 Visualize Hessian determinant blobs
         Lxx, Lxy, Lyy = compute_Lxx_Lxy_Lyy(I_gray, sigma=sigma)
         R = hessian_blobness_criterion(Lxx, Lxy, Lyy)
         blobs = hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob)
@@ -708,10 +694,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_3_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-    # 2.4 Visualize Hessian-Laplace multi-scale blobs
-    for name in image_names:
-        I_gray = images[name]["gray"]
-        I_rgb = images[name]["rgb"]
+        # 2.4 Visualize Hessian-Laplace multi-scale blobs
         scale_results, selected_blobs = select_hessian_laplacian_blobs(
             I_gray,
             sigma_0=sigma_0,
@@ -752,11 +735,7 @@ if __name__ == "__main__":
         save_fig(f"part2_2_4_final_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
-
-
-    # 2.5 Repeatability evaluation under transformations
-    for name in image_names:
-        I_gray = images[name]["gray"]
+        # 2.5 Repeatability evaluation under transformations
         height, width = I_gray.shape
         center = (width / 2.0, height / 2.0)
 
