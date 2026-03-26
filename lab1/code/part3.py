@@ -9,7 +9,9 @@ import torch.nn as nn
 import torchvision
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights # load pretrained weights and transforms
 from torchvision.models.feature_extraction import create_feature_extractor # extract features from intermediate layers
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
+import scipy.io
+import cv26_lab1_part3_utils as p3
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
@@ -28,7 +30,7 @@ def save_fig(filename: str) -> None:
     for directory in (RESULTS_DIR, PICTURES_DIR):
         plt.savefig(os.path.join(directory, filename), bbox_inches='tight')
 
-classes = ['car', 'person', 'bike']
+classes = ['person', 'car', 'bike']  
 
 # 3.2.1 Load MobileNetV3-Small and its pretrained weights
 
@@ -71,44 +73,68 @@ with torch.no_grad(): # dont compute gradients
 
 features = np.array(features)
 
-# 3.2.3 Split the dataset, train an RBF SVM, and evaluate its performance
+# 3.2.3 Split the dataset, train an SVM, and evaluate its performance
+# 5-fold cross-validation using createTrainTest and svm from part 3.1 utils
 
-indices = np.arange(len(features))
-idx_train, idx_test, y_train, y_test = train_test_split(
-    indices, labels, test_size=0.3, random_state=42, stratify=labels
-) # with stratification to maintain class balance in train and test sets
+# Group features by class (createTrainTest expects features[class][image])
+features_by_class = [
+    [features[i] for i in range(len(features)) if labels[i] == c]
+    for c in range(len(classes))
+]
+# Track original flat indices per class (needed for downstream LoRA/Grad-CAM)
+_orig_idx_by_class = [np.where(labels == c)[0] for c in range(len(classes))]
 
-# Normalize features — SVMs are sensitive to input scale
-scaler  = StandardScaler() 
+_orig_cwd = os.getcwd()
+os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))  # Fold_Indices.mat is at project root
+
+fold_accuracies = []
+conf_matrix = None
+for k in range(5):
+    data_tr, lbl_tr, data_te, lbl_te = p3.createTrainTest(features_by_class, k)
+    X_tr, X_te = np.array(data_tr), np.array(data_te)
+    y_tr, y_te = np.array(lbl_tr), np.array(lbl_te)
+
+    sc = StandardScaler()
+    X_tr, X_te = sc.fit_transform(X_tr), sc.transform(X_te)
+
+    fold_acc, y_pred_k, _ = p3.svm(X_tr, y_tr, X_te, y_te)
+    fold_accuracies.append(fold_acc)
+    print(f"  Fold {k+1}: {fold_acc*100:.2f}%")
+
+    fold_cm = confusion_matrix(y_te, y_pred_k, labels=list(range(len(classes))))
+    conf_matrix = fold_cm if conf_matrix is None else conf_matrix + fold_cm
+
+conf_matrix = (conf_matrix / 5).round().astype(int)
+accuracy = np.mean(fold_accuracies)
+print(f"CNN (MobileNetV3) + SVM 5-fold accuracy: {accuracy*100:.2f}% (±{np.std(fold_accuracies)*100:.2f}%)")
+print(f"Confusion matrix (averaged over folds):\n{conf_matrix}")
+
+# Keep last fold for downstream use (LoRA, Grad-CAM)
+mat = scipy.io.loadmat('./Fold_Indices.mat')
+_fold_idx = mat['Indices'].flatten()[4].flatten()  # last fold (k=4)
+idx_train_list, idx_test_list = [], []
+for c in range(len(classes)):
+    ic = _fold_idx[c].flatten()
+    orig = _orig_idx_by_class[c][ic]
+    lim = int(round(0.7 * len(ic)))
+    idx_train_list.extend(orig[:lim])
+    idx_test_list.extend(orig[lim:])
+idx_train = np.array(idx_train_list)
+idx_test = np.array(idx_test_list)
+y_train, y_test = labels[idx_train], labels[idx_test]
+scaler = StandardScaler()
 X_train = scaler.fit_transform(features[idx_train])
 X_test  = scaler.transform(features[idx_test])
+accuracy_last_fold, y_pred, _ = p3.svm(X_train, y_train, X_test, y_test)
+print(f"Last fold (baseline for comparison table): {accuracy_last_fold*100:.2f}%")
 
-# Grid search over SVM hyperparameters with 5-fold stratified cross-validation
-param_grid = {
-    'C':     [0.1, 1, 10, 100, 1000],
-    'gamma': ['scale', 'auto', 1e-3, 1e-2, 1e-1],
-}
-grid_search = GridSearchCV(
-    SVC(kernel='rbf', decision_function_shape='ovr'),
-    param_grid, cv=5, scoring='accuracy', n_jobs=-1, verbose=1,
-)
-grid_search.fit(X_train, y_train)
-svm = grid_search.best_estimator_
-best_svm_params = grid_search.best_params_  # reuse everywhere
-print(f"Best SVM params: {best_svm_params}  (CV acc: {grid_search.best_score_*100:.2f}%)")
-
-y_pred   = svm.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-conf_matrix = confusion_matrix(y_test, y_pred)
-print(f"CNN (MobileNetV3) + SVM accuracy: {accuracy*100:.2f}%")
-print(f"Confusion matrix:\n{conf_matrix}")
+os.chdir(_orig_cwd)
 
 fig, ax = plt.subplots(figsize=(5, 4))
 sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
             xticklabels=classes, yticklabels=classes, ax=ax)
 ax.set_xlabel('Predicted')
 ax.set_ylabel('True')
-ax.set_title(f'Confusion Matrix — MobileNet + SVM ({accuracy*100:.2f}%)')
 plt.tight_layout()
 save_fig('confusion_matrix.jpg')
 plt.close()
@@ -189,9 +215,8 @@ def evaluate_pipeline(imgs, lbls, label):
     )
     sc = StandardScaler()
     Xtr, Xte = sc.fit_transform(Xtr), sc.transform(Xte)
-    clf = SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params)
-    clf.fit(Xtr, ytr)
-    print(f"{label} accuracy: {accuracy_score(yte, clf.predict(Xte))*100:.2f}%")
+    acc, _, _ = p3.svm(Xtr, ytr, Xte, yte)
+    print(f"{label} accuracy: {acc*100:.2f}%")
 
 evaluate_pipeline(*load_and_augment(add_gaussian_noise), "Gaussian noise")
 evaluate_pipeline(*load_and_augment(random_rotation),    "Random rotation")
@@ -244,12 +269,22 @@ def train_mlp(feat_train, y_train_t, feat_test, y_test_t,
     return head, acc, f1, preds, train_time
 
 
-# (A) Baseline: frozen backbone + SVM (already trained above)
+# (A) Baseline: frozen backbone + linear SVM (already trained above)
 svm_f1 = f1_score(y_test, y_pred, average='macro')
 t0 = time.time()
-SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params).fit(X_train, y_train)
+p3.svm(X_train, y_train, X_test, y_test)
 svm_time = time.time() - t0
-print(f"\n[Baseline] Frozen+SVM  — Acc: {accuracy*100:.2f}%  F1: {svm_f1:.4f}")
+print(f"\n[Baseline] Frozen+Linear SVM  — Acc: {accuracy_last_fold*100:.2f}%  F1: {svm_f1:.4f}")
+
+# (A2) Frozen backbone + RBF SVM (C=10)
+rbf_svm = SVC(kernel='rbf', C=10, gamma='scale', decision_function_shape='ovr')
+t0 = time.time()
+rbf_svm.fit(X_train, y_train)
+rbf_svm_time = time.time() - t0
+rbf_y_pred = rbf_svm.predict(X_test)
+rbf_svm_acc = accuracy_score(y_test, rbf_y_pred)
+rbf_svm_f1 = f1_score(y_test, rbf_y_pred, average='macro')
+print(f"[Frozen+RBF SVM] Acc: {rbf_svm_acc*100:.2f}%  F1: {rbf_svm_f1:.4f}  (C=10, gamma=scale)")
 
 # (B) LoRA backbone adaptation (train end-to-end to adapt features)
 print("\n--- Training: LoRA backbone adaptation ---")
@@ -308,11 +343,8 @@ X_te_lora = sc_lora.transform(lora_feats[idx_test])
 # (C) LoRA + SVM
 print("\n--- Evaluating: LoRA + SVM ---")
 t0 = time.time()
-svm_lora = SVC(kernel='rbf', decision_function_shape='ovr', **best_svm_params)
-svm_lora.fit(X_tr_lora, y_train)
+lora_svm_acc, lora_svm_preds, _ = p3.svm(X_tr_lora, y_train, X_te_lora, y_test)
 lora_svm_time = lora_backbone_time + (time.time() - t0)
-lora_svm_preds = svm_lora.predict(X_te_lora)
-lora_svm_acc = accuracy_score(y_test, lora_svm_preds)
 lora_svm_f1 = f1_score(y_test, lora_svm_preds, average='macro')
 print(f"[LoRA+SVM] Acc: {lora_svm_acc*100:.2f}%  F1: {lora_svm_f1:.4f}  Time: {lora_svm_time:.1f}s")
 
@@ -333,7 +365,8 @@ print(f"[Frozen+MLP] Acc: {nh_acc*100:.2f}%  F1: {nh_f1:.4f}  Time: {nh_time:.1f
 
 # --- Comparison table ---------------------------------------------------------
 results = [
-    ("Frozen + SVM (Baseline)", accuracy,     svm_f1,      svm_time),
+    ("Frozen + Linear SVM",     accuracy_last_fold, svm_f1,     svm_time),
+    ("Frozen + RBF SVM",        rbf_svm_acc,        rbf_svm_f1, rbf_svm_time),
     ("LoRA + SVM",              lora_svm_acc, lora_svm_f1, lora_svm_time),
     ("Frozen + MLP",            nh_acc,       nh_f1,       nh_time),
     ("LoRA + MLP",              lora_acc,     lora_f1,     lora_time),
