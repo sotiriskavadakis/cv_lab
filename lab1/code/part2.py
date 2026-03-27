@@ -505,14 +505,13 @@ if __name__ == "__main__":
             "gray": image_gray_raw.astype(np.float64),
             "rgb": cv2.cvtColor(image_rgb_raw, cv2.COLOR_BGR2RGB),
         }
-
     for name in image_names:
         I_gray = images[name]["gray"]
         I_rgb = images[name]["rgb"]
+        J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
+        lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
 
         # 2.1.1 Visualize J1, J2, J3
-        J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
-
         fig, ax = plt.subplots(1, 3, figsize=(14, 4))
         fig.suptitle(
             f"Part 2.1.1 - {name} (sigma={sigma}, rho={rho})",
@@ -537,9 +536,6 @@ if __name__ == "__main__":
         plt.close()
 
         # 2.1.2 Visualize lambda_- and lambda_+
-        J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
-        lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
-
         fig, ax = plt.subplots(1, 2, figsize=(10, 4))
         fig.suptitle(
             f"Part 2.1.2 - {name} (sigma={sigma}, rho={rho})",
@@ -560,11 +556,10 @@ if __name__ == "__main__":
         plt.close()
 
         # 2.1.3 Visualize Harris responses and corners
-        J1, J2, J3 = compute_J1_J2_J3(I_gray, sigma=sigma, rho=rho)
-        lambda_minus, lambda_plus = compute_lambda_minus_plus(J1, J2, J3)
-        R = harris_cornerness_criterion(lambda_minus, lambda_plus, k=k)
-        corners = harris_corners_detector(I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn)
-
+        harris_response = harris_cornerness_criterion(lambda_minus, lambda_plus, k=k)
+        harris_corners = harris_corners_detector(
+            I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn
+        )
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(
             f"Part 2.1.3 - {name} (sigma={sigma}, rho={rho}, k={k}, theta_corn={theta_corn})",
@@ -572,12 +567,12 @@ if __name__ == "__main__":
             fontweight="bold",
         )
 
-        ax[0].imshow(R, cmap="gray")
+        ax[0].imshow(harris_response, cmap="gray")
         ax[0].set_title("Harris response R")
         ax[0].axis("off")
 
-        interest_points_visualization(I_rgb, corners, ax=ax[1])
-        ax[1].set_title(f"Detected corners: {len(corners)}")
+        interest_points_visualization(I_rgb, harris_corners, ax=ax[1])
+        ax[1].set_title(f"Detected corners: {len(harris_corners)}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
         save_fig(f"part2_2_1_3_{os.path.splitext(name)[0]}.jpg")
@@ -629,16 +624,17 @@ if __name__ == "__main__":
         plt.close()
 
         # 2.2.2 Visualize Harris-Laplacian scale selection
-        scale_results, selected_points = select_harris_laplacian_points(
-            I_gray,
-            sigma_0=sigma_0,
-            rho_0=rho_0,
-            s=s,
-            N=N,
-            k=k,
-            theta_corn=theta_corn,
+        harris_laplacian_scale_results, harris_laplacian_points = (
+            select_harris_laplacian_points(
+                I_gray,
+                sigma_0=sigma_0,
+                rho_0=rho_0,
+                s=s,
+                N=N,
+                k=k,
+                theta_corn=theta_corn,
+            )
         )
-
         fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
         fig.suptitle(
             f"Part 2.2.2 - {name} (sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N})",
@@ -646,7 +642,7 @@ if __name__ == "__main__":
             fontweight="bold",
         )
 
-        for ax_col, scale_result in enumerate(scale_results):
+        for ax_col, scale_result in enumerate(harris_laplacian_scale_results):
             axes[0, ax_col].imshow(scale_result["LoG"], cmap="gray")
             axes[0, ax_col].set_title(
                 f"|LoG|, i={ax_col}\nsigma={scale_result['sigma']:.2f}"
@@ -665,17 +661,16 @@ if __name__ == "__main__":
 
         fig2, ax2 = plt.subplots(figsize=(7, 5))
         fig2.suptitle(f"Part 2.2.2 - Final Harris-Laplacian points on {name}")
-        interest_points_visualization(I_rgb, selected_points, ax=ax2)
-        ax2.set_title(f"Total selected points: {len(selected_points)}")
+        interest_points_visualization(I_rgb, harris_laplacian_points, ax=ax2)
+        ax2.set_title(f"Total selected points: {len(harris_laplacian_points)}")
         plt.tight_layout()
         save_fig(f"part2_2_2_2_final_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
         # 2.3 Visualize Hessian determinant blobs
         Lxx, Lxy, Lyy = compute_Lxx_Lxy_Lyy(I_gray, sigma=sigma)
-        R = hessian_blobness_criterion(Lxx, Lxy, Lyy)
-        blobs = hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob)
-
+        hessian_response = hessian_blobness_criterion(Lxx, Lxy, Lyy)
+        hessian_blobs = hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob)
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(
             f"Part 2.3 - {name} (sigma={sigma}, theta_blob={theta_blob})",
@@ -683,25 +678,52 @@ if __name__ == "__main__":
             fontweight="bold",
         )
 
-        ax[0].imshow(R, cmap="gray")
+        ax[0].imshow(hessian_response, cmap="gray")
         ax[0].set_title("det(H)")
         ax[0].axis("off")
 
-        interest_points_visualization(I_rgb, blobs, ax=ax[1])
-        ax[1].set_title(f"Detected blobs: {len(blobs)}")
+        interest_points_visualization(I_rgb, hessian_blobs, ax=ax[1])
+        ax[1].set_title(f"Detected blobs: {len(hessian_blobs)}")
 
         plt.tight_layout(rect=[0, 0, 1, 0.92])
         save_fig(f"part2_2_3_{os.path.splitext(name)[0]}.jpg")
         plt.close()
 
         # 2.4 Visualize Hessian-Laplace multi-scale blobs
-        scale_results, selected_blobs = select_hessian_laplacian_blobs(
-            I_gray,
-            sigma_0=sigma_0,
-            s=s,
-            N=N,
-            theta_blob=theta_blob,
+        hessian_laplacian_scale_results, hessian_laplacian_blobs = (
+            select_hessian_laplacian_blobs(
+                I_gray,
+                sigma_0=sigma_0,
+                s=s,
+                N=N,
+                theta_blob=theta_blob,
+            )
         )
+
+        fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
+        fig.suptitle(
+            f"Part 2.4.1 - {name} (sigma_0={sigma_0}, s={s}, N={N})",
+            fontsize=13,
+            fontweight="bold",
+        )
+
+        for ax_col, scale_result in enumerate(hessian_laplacian_scale_results):
+            R_i = scale_result["R"]
+            blobs_i = scale_result["blobs"]
+            sigma_i = scale_result["sigma"]
+
+            axes[0, ax_col].imshow(R_i, cmap="gray")
+            axes[0, ax_col].set_title(
+                f"det(H), i={ax_col}\nsigma={sigma_i:.2f}"
+            )
+            axes[0, ax_col].axis("off")
+
+            interest_points_visualization(I_rgb, blobs_i, ax=axes[1, ax_col])
+            axes[1, ax_col].set_title(f"Blobs: {len(blobs_i)}")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
+        save_fig(f"part2_2_4_1_{os.path.splitext(name)[0]}.jpg")
+        plt.close()
 
         fig, axes = plt.subplots(2, N, figsize=(4 * N, 8))
         fig.suptitle(
@@ -710,7 +732,7 @@ if __name__ == "__main__":
             fontweight="bold",
         )
 
-        for ax_col, scale_result in enumerate(scale_results):
+        for ax_col, scale_result in enumerate(hessian_laplacian_scale_results):
             axes[0, ax_col].imshow(scale_result["LoG"], cmap="gray")
             axes[0, ax_col].set_title(
                 f"|LoG|, i={ax_col}\nsigma={scale_result['sigma']:.2f}"
@@ -729,8 +751,8 @@ if __name__ == "__main__":
 
         fig2, ax2 = plt.subplots(figsize=(7, 5))
         fig2.suptitle(f"Part 2.4 - Final Hessian-Laplace blobs on {name}")
-        interest_points_visualization(I_rgb, selected_blobs, ax=ax2)
-        ax2.set_title(f"Total selected blobs: {len(selected_blobs)}")
+        interest_points_visualization(I_rgb, hessian_laplacian_blobs, ax=ax2)
+        ax2.set_title(f"Total selected blobs: {len(hessian_laplacian_blobs)}")
         plt.tight_layout()
         save_fig(f"part2_2_4_final_{os.path.splitext(name)[0]}.jpg")
         plt.close()
@@ -758,26 +780,22 @@ if __name__ == "__main__":
             (
                 "Harris",
                 f"sigma={sigma}, rho={rho}, k={k}, theta_corn={theta_corn}",
-                harris_corners_detector(I_gray, sigma=sigma, rho=rho, k=k, theta_corn=theta_corn),
+                harris_corners,
             ),
             (
                 "Harris-Laplacian",
                 f"sigma_0={sigma_0}, rho_0={rho_0}, s={s}, N={N}, k={k}, theta_corn={theta_corn}",
-                select_harris_laplacian_points(
-                    I_gray, sigma_0=sigma_0, rho_0=rho_0, s=s, N=N, k=k, theta_corn=theta_corn
-                )[1],
+                harris_laplacian_points,
             ),
             (
                 "Hessian",
                 f"sigma={sigma}, theta_blob={theta_blob}",
-                hessian_blobs_detector(I_gray, sigma=sigma, theta_blob=theta_blob),
+                hessian_blobs,
             ),
             (
                 "Hessian-Laplacian",
                 f"sigma_0={sigma_0}, s={s}, N={N}, theta_blob={theta_blob}",
-                select_hessian_laplacian_blobs(
-                    I_gray, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob
-                )[1],
+                hessian_laplacian_blobs,
             ),
         ]
 
@@ -802,7 +820,9 @@ if __name__ == "__main__":
                         I_transformed, sigma_0=sigma_0, s=s, N=N, theta_blob=theta_blob
                     )[1]
 
-                repeatability, n_matches = calculate_repeatability(pts1, pts2, H, dist_thresh=3)
+                repeatability, n_matches = calculate_repeatability(
+                    pts1, pts2, H, dist_thresh=3, scale_tol=0.50
+                )
                 print(
                     f"    {transform_name}: repeatability={repeatability:.3f}, "
                     f"matches={n_matches}, pts1={len(pts1)}, pts2={len(pts2)}"

@@ -97,14 +97,12 @@ if __name__ == "__main__":
         "harris_laplacian + hog": [],
         "hessian_laplacian + surf": [],
         "hessian_laplacian + hog": [],
-        "hessian_laplacian + surf_hog_late_fusion": [],
     }
     extraction_time_results = {
         "harris_laplacian + surf": [],
         "harris_laplacian + hog": [],
         "hessian_laplacian + surf": [],
         "hessian_laplacian + hog": [],
-        "hessian_laplacian + surf_hog_late_fusion": [],
     }
     time_cache = load_time_cache()
 
@@ -112,7 +110,9 @@ if __name__ == "__main__":
         print(f"\n=== Sweep for s = {s_value:.1f} ===")
         confusion_results = {}
         class_labels = None
-        late_fusion_features = {}
+        fusion_harris_hog_features = None
+        fusion_hessian_surf_features = None
+        fusion_hessian_hog_features = None
 
         detector_configs = [
             (
@@ -210,52 +210,101 @@ if __name__ == "__main__":
                     f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
                 )
 
-                if detector_name == "hessian_laplacian" and s_value == 1.5:
-                    late_fusion_features[descriptor_name] = feats
+                if s_value == 1.5:
+                    if detector_name == "harris_laplacian" and descriptor_name == "hog":
+                        fusion_harris_hog_features = feats
+                    elif detector_name == "hessian_laplacian" and descriptor_name == "surf":
+                        fusion_hessian_surf_features = feats
+                    elif detector_name == "hessian_laplacian" and descriptor_name == "hog":
+                        fusion_hessian_hog_features = feats
 
-        if s_value == 1.5 and {"surf", "hog"} <= late_fusion_features.keys():
-            combo_name = "hessian_laplacian + surf_hog_late_fusion"
+        if (
+            s_value == 1.5
+            and fusion_harris_hog_features is not None
+            and fusion_hessian_surf_features is not None
+        ):
             accs = []
-            combo_confusion = None
-            extraction_time_results[combo_name].append(np.nan)
 
             for k in range(5):
-                surf_train, label_train, surf_test, label_test = p3.createTrainTest(
-                    late_fusion_features["surf"], k
+                harris_hog_train, label_train, harris_hog_test, label_test = p3.createTrainTest(
+                    fusion_harris_hog_features, k
                 )
-                hog_train, _, hog_test, _ = p3.createTrainTest(late_fusion_features["hog"], k)
+                hessian_surf_train, label_train_2, hessian_surf_test, label_test_2 = p3.createTrainTest(
+                    fusion_hessian_surf_features, k
+                )
 
-                if class_labels is None:
-                    class_labels = np.unique(np.concatenate((label_train, label_test)))
+                if label_train != label_train_2 or label_test != label_test_2:
+                    raise ValueError("Late fusion requires identical train/test splits.")
 
-                bof_train_surf, bof_test_surf = p3.BagOfWords(surf_train, surf_test)
-                bof_train_hog, bof_test_hog = p3.BagOfWords(hog_train, hog_test)
+                bof_train_harris_hog, bof_test_harris_hog = p3.BagOfWords(
+                    harris_hog_train, harris_hog_test
+                )
+                bof_train_hessian_surf, bof_test_hessian_surf = p3.BagOfWords(
+                    hessian_surf_train, hessian_surf_test
+                )
 
-                bof_train_fused = np.hstack((bof_train_surf, bof_train_hog))
-                bof_test_fused = np.hstack((bof_test_surf, bof_test_hog))
+                bof_train_fused = np.hstack(
+                    (bof_train_harris_hog, bof_train_hessian_surf)
+                )
+                bof_test_fused = np.hstack(
+                    (bof_test_harris_hog, bof_test_hessian_surf)
+                )
 
-                acc, predictions, _ = p3.svm(
+                acc, _, _ = p3.svm(
                     bof_train_fused, label_train, bof_test_fused, label_test
                 )
                 accs.append(acc)
 
-                fold_confusion = confusion_matrix(
-                    label_test, predictions, labels=class_labels
-                )
-                if combo_confusion is None:
-                    combo_confusion = fold_confusion
-                else:
-                    combo_confusion += fold_confusion
-
             mean_acc = float(np.mean(accs))
-            sweep_results[combo_name].append(mean_acc)
             print(
-                f"Mean accuracy for hessian_laplacian with surf_hog_late_fusion "
+                "Mean accuracy for late fusion "
+                "(harris_laplacian + hog) + (hessian_laplacian + surf) "
                 f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
             )
-        else:
-            sweep_results["hessian_laplacian + surf_hog_late_fusion"].append(np.nan)
-            extraction_time_results["hessian_laplacian + surf_hog_late_fusion"].append(np.nan)
+
+        if (
+            s_value == 1.5
+            and fusion_hessian_hog_features is not None
+            and fusion_hessian_surf_features is not None
+        ):
+            accs = []
+
+            for k in range(5):
+                hessian_surf_train, label_train, hessian_surf_test, label_test = p3.createTrainTest(
+                    fusion_hessian_surf_features, k
+                )
+                hessian_hog_train, label_train_2, hessian_hog_test, label_test_2 = p3.createTrainTest(
+                    fusion_hessian_hog_features, k
+                )
+
+                if label_train != label_train_2 or label_test != label_test_2:
+                    raise ValueError("Late fusion requires identical train/test splits.")
+
+                bof_train_hessian_surf, bof_test_hessian_surf = p3.BagOfWords(
+                    hessian_surf_train, hessian_surf_test
+                )
+                bof_train_hessian_hog, bof_test_hessian_hog = p3.BagOfWords(
+                    hessian_hog_train, hessian_hog_test
+                )
+
+                bof_train_fused = np.hstack(
+                    (bof_train_hessian_surf, bof_train_hessian_hog)
+                )
+                bof_test_fused = np.hstack(
+                    (bof_test_hessian_surf, bof_test_hessian_hog)
+                )
+
+                acc, _, _ = p3.svm(
+                    bof_train_fused, label_train, bof_test_fused, label_test
+                )
+                accs.append(acc)
+
+            mean_acc = float(np.mean(accs))
+            print(
+                "Mean accuracy for late fusion "
+                "(hessian_laplacian + surf) + (hessian_laplacian + hog) "
+                f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
+            )
 
         if class_labels is not None:
             plot_confusion_matrices_for_s(s_value, confusion_results, class_labels)
@@ -268,7 +317,7 @@ if __name__ == "__main__":
     ax.set_ylabel("Mean 5-fold accuracy")
     ax.set_title("Accuracy sweep over s")
     ax.set_xticks(S_SWEEP_VALUES)
-    ax.set_ylim(0.0, 1.0)
+    ax.set_ylim(0.5, 0.8)
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
