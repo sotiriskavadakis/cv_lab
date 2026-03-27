@@ -97,12 +97,18 @@ if __name__ == "__main__":
         "harris_laplacian + hog": [],
         "hessian_laplacian + surf": [],
         "hessian_laplacian + hog": [],
+        "late fusion: harris_surf + hessian_surf": [],
+        "late fusion: harris_hog + hessian_surf": [],
+        "late fusion: hessian_surf + hessian_hog": [],
     }
     extraction_time_results = {
         "harris_laplacian + surf": [],
         "harris_laplacian + hog": [],
         "hessian_laplacian + surf": [],
         "hessian_laplacian + hog": [],
+        "late fusion: harris_surf + hessian_surf": [],
+        "late fusion: harris_hog + hessian_surf": [],
+        "late fusion: hessian_surf + hessian_hog": [],
     }
     time_cache = load_time_cache()
 
@@ -110,6 +116,7 @@ if __name__ == "__main__":
         print(f"\n=== Sweep for s = {s_value:.1f} ===")
         confusion_results = {}
         class_labels = None
+        fusion_harris_surf_features = None
         fusion_harris_hog_features = None
         fusion_hessian_surf_features = None
         fusion_hessian_hog_features = None
@@ -210,17 +217,79 @@ if __name__ == "__main__":
                     f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
                 )
 
-                if s_value == 1.5:
-                    if detector_name == "harris_laplacian" and descriptor_name == "hog":
-                        fusion_harris_hog_features = feats
-                    elif detector_name == "hessian_laplacian" and descriptor_name == "surf":
-                        fusion_hessian_surf_features = feats
-                    elif detector_name == "hessian_laplacian" and descriptor_name == "hog":
-                        fusion_hessian_hog_features = feats
+                if detector_name == "harris_laplacian" and descriptor_name == "surf":
+                    fusion_harris_surf_features = feats
+                elif detector_name == "harris_laplacian" and descriptor_name == "hog":
+                    fusion_harris_hog_features = feats
+                elif detector_name == "hessian_laplacian" and descriptor_name == "surf":
+                    fusion_hessian_surf_features = feats
+                elif detector_name == "hessian_laplacian" and descriptor_name == "hog":
+                    fusion_hessian_hog_features = feats
 
         if (
-            s_value == 1.5
-            and fusion_harris_hog_features is not None
+            fusion_harris_surf_features is not None
+            and fusion_hessian_surf_features is not None
+        ):
+            accs = []
+
+            for k in range(5):
+                harris_surf_train, label_train, harris_surf_test, label_test = p3.createTrainTest(
+                    fusion_harris_surf_features, k
+                )
+                hessian_surf_train, label_train_2, hessian_surf_test, label_test_2 = p3.createTrainTest(
+                    fusion_hessian_surf_features, k
+                )
+
+                if label_train != label_train_2 or label_test != label_test_2:
+                    raise ValueError("Late fusion requires identical train/test splits.")
+
+                bof_train_harris_surf, bof_test_harris_surf = p3.BagOfWords(
+                    harris_surf_train, harris_surf_test
+                )
+                bof_train_hessian_surf, bof_test_hessian_surf = p3.BagOfWords(
+                    hessian_surf_train, hessian_surf_test
+                )
+
+                bof_train_fused = np.hstack(
+                    (bof_train_harris_surf, bof_train_hessian_surf)
+                )
+                bof_test_fused = np.hstack(
+                    (bof_test_harris_surf, bof_test_hessian_surf)
+                )
+
+                acc, _, _ = p3.svm(
+                    bof_train_fused, label_train, bof_test_fused, label_test
+                )
+                accs.append(acc)
+
+            mean_acc = float(np.mean(accs))
+            fusion_name = "late fusion: harris_surf + hessian_surf"
+            sweep_results[fusion_name].append(mean_acc)
+            harris_surf_time = extraction_time_results["harris_laplacian + surf"][-1]
+            hessian_surf_time = extraction_time_results["hessian_laplacian + surf"][-1]
+            if np.isnan(harris_surf_time) or np.isnan(hessian_surf_time):
+                fusion_time = np.nan
+            else:
+                fusion_time = harris_surf_time + hessian_surf_time
+            extraction_time_results[fusion_name].append(fusion_time)
+            print(
+                "Mean accuracy for late fusion "
+                "(harris_laplacian + surf) + (hessian_laplacian + surf) "
+                f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
+            )
+            if np.isnan(fusion_time):
+                print(f"Feature extraction time for {fusion_name}: unavailable")
+            else:
+                print(
+                    f"Feature extraction time for {fusion_name}: "
+                    f"{fusion_time:.2f} s"
+                )
+        else:
+            sweep_results["late fusion: harris_surf + hessian_surf"].append(np.nan)
+            extraction_time_results["late fusion: harris_surf + hessian_surf"].append(np.nan)
+
+        if (
+            fusion_harris_hog_features is not None
             and fusion_hessian_surf_features is not None
         ):
             accs = []
@@ -256,15 +325,33 @@ if __name__ == "__main__":
                 accs.append(acc)
 
             mean_acc = float(np.mean(accs))
+            fusion_name = "late fusion: harris_hog + hessian_surf"
+            sweep_results[fusion_name].append(mean_acc)
+            harris_hog_time = extraction_time_results["harris_laplacian + hog"][-1]
+            hessian_surf_time = extraction_time_results["hessian_laplacian + surf"][-1]
+            if np.isnan(harris_hog_time) or np.isnan(hessian_surf_time):
+                fusion_time = np.nan
+            else:
+                fusion_time = harris_hog_time + hessian_surf_time
+            extraction_time_results[fusion_name].append(fusion_time)
             print(
                 "Mean accuracy for late fusion "
                 "(harris_laplacian + hog) + (hessian_laplacian + surf) "
                 f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
             )
+            if np.isnan(fusion_time):
+                print(f"Feature extraction time for {fusion_name}: unavailable")
+            else:
+                print(
+                    f"Feature extraction time for {fusion_name}: "
+                    f"{fusion_time:.2f} s"
+                )
+        else:
+            sweep_results["late fusion: harris_hog + hessian_surf"].append(np.nan)
+            extraction_time_results["late fusion: harris_hog + hessian_surf"].append(np.nan)
 
         if (
-            s_value == 1.5
-            and fusion_hessian_hog_features is not None
+            fusion_hessian_hog_features is not None
             and fusion_hessian_surf_features is not None
         ):
             accs = []
@@ -300,11 +387,30 @@ if __name__ == "__main__":
                 accs.append(acc)
 
             mean_acc = float(np.mean(accs))
+            fusion_name = "late fusion: hessian_surf + hessian_hog"
+            sweep_results[fusion_name].append(mean_acc)
+            hessian_surf_time = extraction_time_results["hessian_laplacian + surf"][-1]
+            hessian_hog_time = extraction_time_results["hessian_laplacian + hog"][-1]
+            if np.isnan(hessian_surf_time) or np.isnan(hessian_hog_time):
+                fusion_time = np.nan
+            else:
+                fusion_time = hessian_surf_time + hessian_hog_time
+            extraction_time_results[fusion_name].append(fusion_time)
             print(
                 "Mean accuracy for late fusion "
                 "(hessian_laplacian + surf) + (hessian_laplacian + hog) "
                 f"at s={s_value:.1f}: {100.0 * mean_acc:.3f}%"
             )
+            if np.isnan(fusion_time):
+                print(f"Feature extraction time for {fusion_name}: unavailable")
+            else:
+                print(
+                    f"Feature extraction time for {fusion_name}: "
+                    f"{fusion_time:.2f} s"
+                )
+        else:
+            sweep_results["late fusion: hessian_surf + hessian_hog"].append(np.nan)
+            extraction_time_results["late fusion: hessian_surf + hessian_hog"].append(np.nan)
 
         if class_labels is not None:
             plot_confusion_matrices_for_s(s_value, confusion_results, class_labels)
