@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 
 DATA_DIR    = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -11,7 +12,7 @@ os.makedirs(PICTURES_DIR, exist_ok=True)
 
 def save_fig(filename: str) -> None:
     for directory in (RESULTS_DIR, PICTURES_DIR):
-        plt.savefig(os.path.join(directory, filename))
+        plt.savefig(os.path.join(directory, filename), dpi=150)
 
 # PART 1: Edge Detection in Grayscale Images
 
@@ -172,7 +173,7 @@ def evaluate_edges(D: np.ndarray, T: np.ndarray) -> dict:
     return {'precision': precision, 'recall': recall, 'C': C}
 
 # 1.3.3 
-T = find_ground_truth_edges(I0, theta_real_edge=0.1)
+T = find_ground_truth_edges(I0, theta_real_edge=255 * 0.2) 
 
 # Suggested parameter values
 experiments = [
@@ -213,62 +214,22 @@ for img, label, sigma, theta_edge in experiments:
     save_fig(fname)
     plt.close()
 
-# 1.3.4 Precision-Recall Curves over theta_edge sweep
-
-theta_values = np.linspace(0.01, 0.99, 50)
-
-pr_experiments = [
-    (I_20, 'PSNR=20dB', 1.5),
-    (I_10, 'PSNR=10dB', 3.0),
-]
-
-fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-for ax, (img, label, sigma) in zip(axes, pr_experiments):
-    for lap_type, color in [('linear', 'blue'), ('nonlinear', 'orange')]:
-        precisions, recalls = [], []
-        for theta in theta_values:
-            D = EdgeDetect(img, sigma, theta, laplacian_type=lap_type)
-            m = evaluate_edges(D, T)
-            precisions.append(m['precision'])
-            recalls.append(m['recall'])
-        # Average Precision: area under the PR curve (sort by recall for correct integration)
-        sorted_pairs = sorted(zip(recalls, precisions))
-        sorted_recalls, sorted_precisions = zip(*sorted_pairs)
-        ap = np.trapezoid(sorted_precisions, sorted_recalls) if len(set(recalls)) > 1 else 0
-        ax.plot(recalls, precisions, color=color, label=f'{lap_type} (AP={ap:.3f})')
-        best = np.argmax([(p + r) / 2 for p, r in zip(precisions, recalls)])
-        ax.scatter(recalls[best], precisions[best], color=color, marker='*', s=200, zorder=5)
-
-    ax.set_xlabel('Recall')
-    ax.set_ylabel('Precision')
-    ax.set_title(f'{label}, σ={sigma}')
-    ax.legend()
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
-    ax.grid(True, alpha=0.3)
-
-plt.tight_layout()
-save_fig('precision_recall_curves.jpg')
-plt.close()
-
 # 1.4 Edge Detection on a real Image
 
 I_real = cv2.imread(os.path.join(DATA_DIR, 'ermoupoli.jpg'), cv2.IMREAD_GRAYSCALE)
-
-if I_real is None:
-    raise FileNotFoundError("Could not load 'ermoupoli.jpg'.")
 
 I_real = I_real.astype(np.float64)
 
 # No ground truth for real images, qualitative (visual) evaluation only
 real_experiments = [
-    (1.5, 0.1, 'low σ, low θ'),
-    (1.5, 0.3, 'low σ, high θ'),
-    (3.0, 0.1, 'high σ, low θ'),
-    (3.0, 0.3, 'high σ, high θ'),
+    (1.5, 0.1),
+    (1.5, 0.3),
+    (3.0, 0.1),
+    (3.0, 0.3),
+    (1, 0.2)
 ]
 
-for sigma, theta_edge, desc in real_experiments:
+for sigma, theta_edge in real_experiments:
     D_lin = EdgeDetect(I_real, sigma, theta_edge, laplacian_type='linear')
     D_nln = EdgeDetect(I_real, sigma, theta_edge, laplacian_type='nonlinear')
 
@@ -291,33 +252,29 @@ for sigma, theta_edge, desc in real_experiments:
 
 # 1.5 2D heatmap: C metric over (sigma, theta_edge) grid
 
-sigmas      = np.linspace(0.5, 5.0, 10)
-theta_values_sweep = np.linspace(0.05, 0.95, 10)
+sigmas = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
+thetas = [0.10, 0.15, 0.17, 0.20, 0.25, 0.30, 0.35, 0.40]
 
-datasets = [(I_20, 'PSNR=20dB'), (I_10, 'PSNR=10dB')]
-lap_types = ['linear', 'nonlinear']
+datasets  = [(I_20, 'PSNR=20dB', 'psnr20'), (I_10, 'PSNR=10dB', 'psnr10')]
+lap_types = [('linear', 'Linear'), ('nonlinear', 'Non Linear')]
 
-fig, axes = plt.subplots(2, 2, figsize=(13, 10), constrained_layout=True)
-
-for col, (img, label) in enumerate(datasets):
-    for row, lap_type in enumerate(lap_types):
-        # C[i, j] = C score at theta_values_sweep[i], sigmas[j]
+for img, label, label_short in datasets:
+    for lap_type, lap_label in lap_types:
+        # C_grid[i, j] = C at sigma=sigmas[i], theta=thetas[j]
         C_grid = np.array([
             [evaluate_edges(EdgeDetect(img, s, th, lap_type), T)['C']
-             for s in sigmas]
-            for th in theta_values_sweep
+             for th in thetas]
+            for s in sigmas
         ])
 
-        ax = axes[row][col]
-        im = ax.imshow(C_grid, origin='lower', aspect='auto',
-                       extent=[sigmas[0], sigmas[-1],
-                               theta_values_sweep[0], theta_values_sweep[-1]],
-                       vmin=0, vmax=1, cmap='viridis')
-        fig.colorbar(im, ax=ax, label='C score')
-        ax.set_xlabel('σ')
-        ax.set_ylabel('θ_edge')
-        ax.set_title(f'{label} — {lap_type}')
+        fig, ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
+        sns.heatmap(C_grid, annot=True, fmt='.3f', cmap='RdBu_r',
+                    xticklabels=[f'{t:.2f}' for t in thetas],
+                    yticklabels=[str(s) for s in sigmas],
+                    ax=ax, vmin=C_grid.min(), vmax=C_grid.max())
+        ax.set_xlabel('θ (theta)')
+        ax.set_ylabel('σ (sigma)')
+        ax.set_title(f'C for {label}, {lap_label}')
 
-plt.suptitle('C score heatmap over (σ, θ_edge)', fontsize=14)
-save_fig('sigma_sweep.jpg')
-plt.close()
+        save_fig(f'heatmap_{label_short}_{lap_type}.jpg')
+        plt.close()
