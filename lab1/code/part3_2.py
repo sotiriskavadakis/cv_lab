@@ -223,7 +223,7 @@ evaluate_pipeline(*load_and_augment(random_rotation),    "Random rotation")
 
 # 3.2.6 (Bonus) Four-way comparison: Frozen+SVM / LoRA+SVM / Frozen+MLP / LoRA+MLP
 
-# for MacOS with Apple Silicon use mps device
+# for MacOS with Apple Silicon we use mps device
 device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
 print(f"\nTraining device: {device}")
 
@@ -264,8 +264,8 @@ def train_mlp(feat_train, y_train_t, feat_test, y_test_t,
     head.eval()
     with torch.no_grad():
         preds = head(torch.tensor(feat_test, dtype=torch.float32).to(device)).argmax(1).cpu().numpy()
-    acc = accuracy_score(y_test, preds)
-    f1 = f1_score(y_test, preds, average='macro')
+    acc = accuracy_score(y_test_t, preds)
+    f1 = f1_score(y_test_t, preds, average='macro')
     return head, acc, f1, preds, train_time
 
 
@@ -396,6 +396,20 @@ plt.tight_layout(); save_fig('comparison_table.jpg'); plt.close()
 # implementing the findings of this paper https://arxiv.org/pdf/1610.02391
 # used for explainability reasons
 
+class BackboneWithHead(nn.Module):
+    """Combines a MobileNetV3 backbone (or LoRA-wrapped) with a 3-class MLP head
+    so that Grad-CAM gradients flow through the task-specific classifier,
+    not the original ImageNet head."""
+    def __init__(self, backbone, head):
+        super().__init__()
+        self.backbone = backbone
+        self.head = head
+
+    def forward(self, x):
+        feat = self.backbone.avgpool(self.backbone.features(x)).flatten(1)
+        return self.head(feat)
+
+
 def setup_gradcam(target_model, layer_path):
     grads, acts = [], []
 
@@ -412,7 +426,8 @@ def setup_gradcam(target_model, layer_path):
 
     def run(img_tensor):
         grads.clear(); acts.clear()
-        inp = img_tensor.unsqueeze(0).requires_grad_(True)
+        dev = next(target_model.parameters()).device
+        inp = img_tensor.unsqueeze(0).to(dev).requires_grad_(True)
         out = target_model(inp)
         target_model.zero_grad()
         out[0, out.argmax(1).item()].backward()
@@ -446,14 +461,20 @@ def plot_gradcam_comparison(img_rgb, cam_frozen, cam_lora, title, filename):
     plt.tight_layout(); save_fig(filename); plt.close()
 
 
-run_gradcam_frozen = setup_gradcam(model, 'features.12')
-run_gradcam_lora   = setup_gradcam(lora_backbone, 'base_model.model.features.12')
+# Wrap each backbone with its trained 3-class head so Grad-CAM gradients
+# flow through the task-specific classifier (not the 1000-class ImageNet head).
+frozen_gradcam_model = BackboneWithHead(model.to(device), frozen_head)
+lora_gradcam_model   = BackboneWithHead(lora_backbone, lora_head)
+
+# Layer paths are relative to BackboneWithHead (backbone.* prefix)
+run_gradcam_frozen = setup_gradcam(frozen_gradcam_model, 'backbone.features.12')
+run_gradcam_lora   = setup_gradcam(lora_gradcam_model,   'backbone.base_model.model.features.12')
 
 # Per-class Grad-CAM comparison
 for cls, img in sample_per_class.items():
     img_rgb = cv2.cvtColor(cv2.imread(paths[labels == classes.index(cls)][0]), cv2.COLOR_BGR2RGB)
     plot_gradcam_comparison(
-        img_rgb, run_gradcam_frozen(img), run_gradcam_lora(img.to(device)),
+        img_rgb, run_gradcam_frozen(img), run_gradcam_lora(img),
         f'Grad-CAM Comparison — class: {cls}', f'gradcam_comparison_{cls}.jpg',
     )
     print(f"[{cls}] Grad-CAM comparison saved.")
@@ -470,7 +491,7 @@ else:
         img_rgb = cv2.cvtColor(cv2.imread(paths[idx]), cv2.COLOR_BGR2RGB)
         t_name, p_name = classes[t_lbl], classes[p_lbl]
         plot_gradcam_comparison(
-            img_rgb, run_gradcam_frozen(images[idx]), run_gradcam_lora(images[idx].to(device)),
+            img_rgb, run_gradcam_frozen(images[idx]), run_gradcam_lora(images[idx]),
             f'Grad-CAM — MISCLASSIFIED\nTrue: {t_name}  |  Predicted: {p_name}',
             f'gradcam_misclassified_{i}_{t_name}_as_{p_name}.jpg',
         )
@@ -496,6 +517,6 @@ for ax, proj, title in [
 
 plt.suptitle('Feature Clustering: Frozen vs LoRA-adapted Backbone',
              fontsize=15, fontweight='bold')
-plt.tight_layout(); save_fig('tsne_pca_frozen_vs_lora.jpg'); plt.close()
+plt.tight_layout(); save_fig('pca_frozen_vs_lora.jpg'); plt.close()
 
 print("\nAll done. Results saved to:", RESULTS_DIR)

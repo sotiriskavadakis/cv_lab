@@ -5,7 +5,6 @@
 .vscode/
 
 # Generated output images (re-run code to reproduce)
-results/
 
 # Dataset images (download separately — too large to track)
 data/part3/**/*.jpg
