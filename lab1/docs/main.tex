@@ -231,6 +231,20 @@ $99.7\%$ της ενέργειας της Gaussian. Χρήση μικρότερ�
 περικομμένο πυρήνα αυτή η ιδιότητα δεν ικανοποιείται ακριβώς, και η διόρθωση
 αποτρέπει την εισαγωγή DC offset στην εκτίμηση της Laplacian.
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{log_psnr20.jpg}
+    \caption{Έξοδος LoG ($L_1$) για PSNR$=20$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Θετικές τιμές φωτεινότερες, αρνητικές σκουρότερες από το γκρι (128).}
+    \label{fig:log_psnr20}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{log_psnr10.jpg}
+    \caption{Έξοδος LoG ($L_1$) για PSNR$=10$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Με περισσότερο θόρυβο η απόκριση είναι πιο θορυβώδης για μικρό $\sigma$.}
+    \label{fig:log_psnr10}
+\end{figure}
+
 \subsubsection{Προσέγγιση Laplacian}
 
 Για την εκτίμηση της Laplacian της εξομαλυμένης εικόνας υλοποιήθηκαν δύο
@@ -335,6 +349,22 @@ $f(x{+}h)+f(x{-}h)-2f(x)$, με τα ακρότατα να παίζουν τον
 συγκρίσιμο $C$ στα πειράματα, με μικρές αποκλίσεις που εξαρτώνται από
 την επιλογή παραμέτρων (βλ.\ §\ref{fig:heatmap_psnr20}).
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{nonlinear_psnr20.jpg}
+    \caption{Έξοδος μη-γραμμικής Laplacian ($L_2$) για PSNR$=20$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Ίδια κωδικοποίηση με τα Σχ.~\ref{fig:log_psnr20}--\ref{fig:log_psnr10}.}
+    \label{fig:nonlinear_psnr20}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{nonlinear_psnr10.jpg}
+    \caption{Έξοδος μη-γραμμικής Laplacian ($L_2$) για PSNR$=10$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Οι ακμές είναι παχύτερες λόγω του σταυροειδούς $B$.}
+    \label{fig:nonlinear_psnr10}
+\end{figure}
+
+\newpage 
+
 \subsubsection{Εύρεση Zero-crossings}
 
 Τα zero-crossings της Laplacian $L$, τα σημεία δηλαδή όπου η δεύτερη παράγωγος αλλάζει
@@ -352,6 +382,34 @@ $f(x{+}h)+f(x{-}h)-2f(x)$, με τα ακρότατα να παίζουν τον
 — εξασφαλίζει ότι το εξαγόμενο όριο είναι συμμετρικό ως προς το $X$ και το
 συμπλήρωμά του $X^c$ \cite{maragos2005}, αποφεύγοντας συστηματική μετατόπιση
 των ακμών προς τη μία ή την άλλη πλευρά.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{zc_linear_psnr20.jpg}
+    \caption{Zero-crossings γραμμικής $L_1$ για PSNR$=20$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Λευκά pixels: $Y=1$, αλλαγή προσήμου της $L$.}
+    \label{fig:zc_linear_psnr20}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{zc_linear_psnr10.jpg}
+    \caption{Zero-crossings γραμμικής $L_1$ για PSNR$=10$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Με μικρό $\sigma$ τα ψευδή zero-crossings λόγω θορύβου είναι εμφανώς περισσότερα.}
+    \label{fig:zc_linear_psnr10}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{zc_nonlinear_psnr20.jpg}
+    \caption{Zero-crossings μη-γραμμικής $L_2$ για PSNR$=20$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά).}
+    \label{fig:zc_nonlinear_psnr20}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{zc_nonlinear_psnr10.jpg}
+    \caption{Zero-crossings μη-γραμμικής $L_2$ για PSNR$=10$\,dB: $\sigma=1.5$ (αριστερά) και $\sigma=3.0$ (δεξιά). Παχύτερες γραμμές λόγω του σταυροειδούς $B$.}
+    \label{fig:zc_nonlinear_psnr10}
+\end{figure}
 
 \subsubsection{Απόρριψη σε Ομαλές Περιοχές}
 

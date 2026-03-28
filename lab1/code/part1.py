@@ -90,7 +90,91 @@ def log_kernel(sigma: float) -> np.ndarray:
     kernel -= kernel.mean() # zero-mean for better edge detection
     return kernel
 
-# 1.2.2 
+# 1.2.1 Intermediate visualizations: Laplacian outputs and zero-crossings
+
+B = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=np.uint8)
+
+# --- PSNR=20dB, sigma=1.5 ---
+Is_20_15 = cv2.filter2D(I_20, -1, gaussian_kernel(1.5), borderType=cv2.BORDER_REFLECT)
+L1_20_15 = cv2.filter2D(I_20, -1, log_kernel(1.5), borderType=cv2.BORDER_REFLECT)
+L2_20_15 = cv2.dilate(Is_20_15, B).astype(np.float64) + cv2.erode(Is_20_15, B).astype(np.float64) - 2*Is_20_15
+ZC1_20_15 = cv2.dilate((L1_20_15 >= 0).astype(np.uint8), B) - cv2.erode((L1_20_15 >= 0).astype(np.uint8), B)
+ZC2_20_15 = cv2.dilate((L2_20_15 >= 0).astype(np.uint8), B) - cv2.erode((L2_20_15 >= 0).astype(np.uint8), B)
+
+# --- PSNR=20dB, sigma=3.0 ---
+Is_20_30 = cv2.filter2D(I_20, -1, gaussian_kernel(3.0), borderType=cv2.BORDER_REFLECT)
+L1_20_30 = cv2.filter2D(I_20, -1, log_kernel(3.0), borderType=cv2.BORDER_REFLECT)
+L2_20_30 = cv2.dilate(Is_20_30, B).astype(np.float64) + cv2.erode(Is_20_30, B).astype(np.float64) - 2*Is_20_30
+ZC1_20_30 = cv2.dilate((L1_20_30 >= 0).astype(np.uint8), B) - cv2.erode((L1_20_30 >= 0).astype(np.uint8), B)
+ZC2_20_30 = cv2.dilate((L2_20_30 >= 0).astype(np.uint8), B) - cv2.erode((L2_20_30 >= 0).astype(np.uint8), B)
+
+# --- PSNR=10dB, sigma=1.5 ---
+Is_10_15 = cv2.filter2D(I_10, -1, gaussian_kernel(1.5), borderType=cv2.BORDER_REFLECT)
+L1_10_15 = cv2.filter2D(I_10, -1, log_kernel(1.5), borderType=cv2.BORDER_REFLECT)
+L2_10_15 = cv2.dilate(Is_10_15, B).astype(np.float64) + cv2.erode(Is_10_15, B).astype(np.float64) - 2*Is_10_15
+ZC1_10_15 = cv2.dilate((L1_10_15 >= 0).astype(np.uint8), B) - cv2.erode((L1_10_15 >= 0).astype(np.uint8), B)
+ZC2_10_15 = cv2.dilate((L2_10_15 >= 0).astype(np.uint8), B) - cv2.erode((L2_10_15 >= 0).astype(np.uint8), B)
+
+# --- PSNR=10dB, sigma=3.0 ---
+Is_10_30 = cv2.filter2D(I_10, -1, gaussian_kernel(3.0), borderType=cv2.BORDER_REFLECT)
+L1_10_30 = cv2.filter2D(I_10, -1, log_kernel(3.0), borderType=cv2.BORDER_REFLECT)
+L2_10_30 = cv2.dilate(Is_10_30, B).astype(np.float64) + cv2.erode(Is_10_30, B).astype(np.float64) - 2*Is_10_30
+ZC1_10_30 = cv2.dilate((L1_10_30 >= 0).astype(np.uint8), B) - cv2.erode((L1_10_30 >= 0).astype(np.uint8), B)
+ZC2_10_30 = cv2.dilate((L2_10_30 >= 0).astype(np.uint8), B) - cv2.erode((L2_10_30 >= 0).astype(np.uint8), B)
+
+def vis(L):
+    s = np.percentile(np.abs(L), 99)
+    return np.clip(128 + L / s * 127, 0, 255).astype(np.uint8)
+
+# Figure 1: Linear L1, PSNR=20
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(vis(L1_20_15), cmap='gray'); axes[0].set_title('LoG, PSNR=20dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(vis(L1_20_30), cmap='gray'); axes[1].set_title('LoG, PSNR=20dB, σ=3.0'); axes[1].axis('off')
+save_fig('log_psnr20.jpg'); plt.close()
+
+# Figure 2: Linear L1, PSNR=10
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(vis(L1_10_15), cmap='gray'); axes[0].set_title('LoG, PSNR=10dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(vis(L1_10_30), cmap='gray'); axes[1].set_title('LoG, PSNR=10dB, σ=3.0'); axes[1].axis('off')
+save_fig('log_psnr10.jpg'); plt.close()
+
+# Figure 3: Nonlinear L2, PSNR=20
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(vis(L2_20_15), cmap='gray'); axes[0].set_title('Nonlinear, PSNR=20dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(vis(L2_20_30), cmap='gray'); axes[1].set_title('Nonlinear, PSNR=20dB, σ=3.0'); axes[1].axis('off')
+save_fig('nonlinear_psnr20.jpg'); plt.close()
+
+# Figure 4: Nonlinear L2, PSNR=10
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(vis(L2_10_15), cmap='gray'); axes[0].set_title('Nonlinear, PSNR=10dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(vis(L2_10_30), cmap='gray'); axes[1].set_title('Nonlinear, PSNR=10dB, σ=3.0'); axes[1].axis('off')
+save_fig('nonlinear_psnr10.jpg'); plt.close()
+
+# Figure 5: ZC Linear, PSNR=20
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(ZC1_20_15, cmap='gray'); axes[0].set_title('ZC Linear, PSNR=20dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(ZC1_20_30, cmap='gray'); axes[1].set_title('ZC Linear, PSNR=20dB, σ=3.0'); axes[1].axis('off')
+save_fig('zc_linear_psnr20.jpg'); plt.close()
+
+# Figure 6: ZC Linear, PSNR=10
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(ZC1_10_15, cmap='gray'); axes[0].set_title('ZC Linear, PSNR=10dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(ZC1_10_30, cmap='gray'); axes[1].set_title('ZC Linear, PSNR=10dB, σ=3.0'); axes[1].axis('off')
+save_fig('zc_linear_psnr10.jpg'); plt.close()
+
+# Figure 7: ZC Nonlinear, PSNR=20
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(ZC2_20_15, cmap='gray'); axes[0].set_title('ZC Nonlinear, PSNR=20dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(ZC2_20_30, cmap='gray'); axes[1].set_title('ZC Nonlinear, PSNR=20dB, σ=3.0'); axes[1].axis('off')
+save_fig('zc_nonlinear_psnr20.jpg'); plt.close()
+
+# Figure 8: ZC Nonlinear, PSNR=10
+fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+axes[0].imshow(ZC2_10_15, cmap='gray'); axes[0].set_title('ZC Nonlinear, PSNR=10dB, σ=1.5'); axes[0].axis('off')
+axes[1].imshow(ZC2_10_30, cmap='gray'); axes[1].set_title('ZC Nonlinear, PSNR=10dB, σ=3.0'); axes[1].axis('off')
+save_fig('zc_nonlinear_psnr10.jpg'); plt.close()
+
+# 1.2.2
 
 def EdgeDetect(I: np.ndarray, sigma: float, theta_edge: float, 
                laplacian_type: str = 'linear') -> np.ndarray:
