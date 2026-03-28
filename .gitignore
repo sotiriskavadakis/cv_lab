@@ -204,8 +204,14 @@ cython_debug/
 # Part 3 dataset
 /Data/
 /Fold_Indices.mat
+lab1/data/
+
+# Large binary results (feature caches, plots)
+lab1/results/part3/*.pkl
+lab1/results/part3/extraction_time_cache.json
 
 # Marimo
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.DS_Store
