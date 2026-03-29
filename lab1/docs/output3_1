@@ -1,0 +1,199 @@
+=== Sweep for s = 1.0 ===
+
+Extracting features with harris_laplacian + surf at s=1.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 105.22it/s]
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 110.93it/s]
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 110.89it/s] 
+Time for feature extraction: 99.095
+Feature extraction time for harris_laplacian + surf: 104.83 s
+Mean accuracy for harris_laplacian with surf at s=1.0: 72.690%
+
+Extracting features with harris_laplacian + hog at s=1.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 146.20it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 151.45it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 147.09it/s] 
+Time for feature extraction: 120.176
+Feature extraction time for harris_laplacian + hog: 124.33 s
+Mean accuracy for harris_laplacian with hog at s=1.0: 61.241%
+
+Extracting features with hessian_laplacian + surf at s=1.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 134.55it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 131.09it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 123.18it/s] 
+Time for feature extraction: 65.566
+Feature extraction time for hessian_laplacian + surf: 70.41 s
+Mean accuracy for hessian_laplacian with surf at s=1.0: 72.966%
+
+Extracting features with hessian_laplacian + hog at s=1.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 144.00it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 148.81it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 146.89it/s] 
+Time for feature extraction: 108.405
+Feature extraction time for hessian_laplacian + hog: 112.63 s
+Mean accuracy for hessian_laplacian with hog at s=1.0: 63.172%
+Mean accuracy for late fusion (harris_laplacian + surf) + (hessian_laplacian + surf) at s=1.0: 75.034%
+Feature extraction time for late fusion: harris_surf + hessian_surf: 175.24 s
+Mean accuracy for late fusion (harris_laplacian + hog) + (hessian_laplacian + surf) at s=1.0: 73.517%
+Feature extraction time for late fusion: harris_hog + hessian_surf: 194.75 s
+Mean accuracy for late fusion (hessian_laplacian + surf) + (hessian_laplacian + hog) at s=1.0: 73.103%
+Feature extraction time for late fusion: hessian_surf + hessian_hog: 183.05 s
+
+=== Sweep for s = 1.2 ===
+
+Extracting features with harris_laplacian + surf at s=1.2
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 138.00it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 148.38it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 144.53it/s] 
+Time for feature extraction: 141.566
+Feature extraction time for harris_laplacian + surf: 145.86 s
+Mean accuracy for harris_laplacian with surf at s=1.2: 70.621%
+
+Extracting features with harris_laplacian + hog at s=1.2
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 127.80it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 149.60it/s]
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 147.23it/s] 
+Time for feature extraction: 146.848
+Feature extraction time for harris_laplacian + hog: 151.22 s
+Mean accuracy for harris_laplacian with hog at s=1.2: 60.966%
+
+Extracting features with hessian_laplacian + surf at s=1.2
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 139.43it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 150.85it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 146.50it/s] 
+Time for feature extraction: 91.485
+Feature extraction time for hessian_laplacian + surf: 95.74 s
+Mean accuracy for hessian_laplacian with surf at s=1.2: 73.655%
+
+Extracting features with hessian_laplacian + hog at s=1.2
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 136.78it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 139.19it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 135.40it/s] 
+Time for feature extraction: 102.441
+Feature extraction time for hessian_laplacian + hog: 106.93 s
+Mean accuracy for hessian_laplacian with hog at s=1.2: 65.655%
+Mean accuracy for late fusion (harris_laplacian + surf) + (hessian_laplacian + surf) at s=1.2: 74.483%
+Feature extraction time for late fusion: harris_surf + hessian_surf: 241.60 s
+Mean accuracy for late fusion (harris_laplacian + hog) + (hessian_laplacian + surf) at s=1.2: 73.379%
+Feature extraction time for late fusion: harris_hog + hessian_surf: 246.96 s
+Mean accuracy for late fusion (hessian_laplacian + surf) + (hessian_laplacian + hog) at s=1.2: 73.655%
+Feature extraction time for late fusion: hessian_surf + hessian_hog: 202.67 s
+
+=== Sweep for s = 1.5 ===
+
+Extracting features with harris_laplacian + surf at s=1.5
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 125.25it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 135.85it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 133.27it/s] 
+Time for feature extraction: 216.142
+Feature extraction time for harris_laplacian + surf: 220.84 s
+Mean accuracy for harris_laplacian with surf at s=1.5: 73.103%
+
+Extracting features with harris_laplacian + hog at s=1.5
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 136.84it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 139.12it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 135.51it/s] 
+Time for feature extraction: 219.003
+Feature extraction time for harris_laplacian + hog: 223.49 s
+Mean accuracy for harris_laplacian with hog at s=1.5: 64.828%
+
+Extracting features with hessian_laplacian + surf at s=1.5
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 135.27it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 139.29it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 131.93it/s] 
+Time for feature extraction: 165.766
+Feature extraction time for hessian_laplacian + surf: 170.34 s
+Mean accuracy for hessian_laplacian with surf at s=1.5: 74.345%
+
+Extracting features with hessian_laplacian + hog at s=1.5
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 143.80it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 149.91it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 145.77it/s] 
+Time for feature extraction: 180.675
+Feature extraction time for hessian_laplacian + hog: 184.88 s
+Mean accuracy for hessian_laplacian with hog at s=1.5: 64.552%
+Mean accuracy for late fusion (harris_laplacian + surf) + (hessian_laplacian + surf) at s=1.5: 76.138%
+Feature extraction time for late fusion: harris_surf + hessian_surf: 391.17 s
+Mean accuracy for late fusion (harris_laplacian + hog) + (hessian_laplacian + surf) at s=1.5: 75.586%
+Feature extraction time for late fusion: harris_hog + hessian_surf: 393.83 s
+Mean accuracy for late fusion (hessian_laplacian + surf) + (hessian_laplacian + hog) at s=1.5: 74.897%
+Feature extraction time for late fusion: hessian_surf + hessian_hog: 355.21 s
+
+=== Sweep for s = 1.8 ===
+
+Extracting features with harris_laplacian + surf at s=1.8
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 138.67it/s]
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 145.44it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 142.65it/s] 
+Time for feature extraction: 387.071
+Feature extraction time for harris_laplacian + surf: 391.41 s
+Mean accuracy for harris_laplacian with surf at s=1.8: 72.414%
+
+Extracting features with harris_laplacian + hog at s=1.8
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 135.60it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 135.58it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 134.58it/s] 
+Time for feature extraction: 392.760
+Feature extraction time for harris_laplacian + hog: 397.30 s
+Mean accuracy for harris_laplacian with hog at s=1.8: 64.276%
+
+Extracting features with hessian_laplacian + surf at s=1.8
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 143.34it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 148.35it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 139.72it/s] 
+Time for feature extraction: 332.902
+Feature extraction time for hessian_laplacian + surf: 337.21 s
+Mean accuracy for hessian_laplacian with surf at s=1.8: 73.931%
+
+Extracting features with hessian_laplacian + hog at s=1.8
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 142.69it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 148.72it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 143.65it/s] 
+Time for feature extraction: 347.730
+Feature extraction time for hessian_laplacian + hog: 351.98 s
+Mean accuracy for hessian_laplacian with hog at s=1.8: 65.931%
+Mean accuracy for late fusion (harris_laplacian + surf) + (hessian_laplacian + surf) at s=1.8: 75.310%
+Feature extraction time for late fusion: harris_surf + hessian_surf: 728.62 s
+Mean accuracy for late fusion (harris_laplacian + hog) + (hessian_laplacian + surf) at s=1.8: 74.069%
+Feature extraction time for late fusion: harris_hog + hessian_surf: 734.52 s
+Mean accuracy for late fusion (hessian_laplacian + surf) + (hessian_laplacian + hog) at s=1.8: 73.241%
+Feature extraction time for late fusion: hessian_surf + hessian_hog: 689.19 s
+
+=== Sweep for s = 2.0 ===
+
+Extracting features with harris_laplacian + surf at s=2.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 126.35it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 135.96it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 134.58it/s] 
+Time for feature extraction: 591.570
+Feature extraction time for harris_laplacian + surf: 596.23 s
+Mean accuracy for harris_laplacian with surf at s=2.0: 69.931%
+
+Extracting features with harris_laplacian + hog at s=2.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 140.78it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 147.73it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 143.40it/s] 
+Time for feature extraction: 592.856
+Feature extraction time for harris_laplacian + hog: 597.13 s
+Mean accuracy for harris_laplacian with hog at s=2.0: 63.862%
+
+Extracting features with hessian_laplacian + surf at s=2.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 142.40it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 149.14it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 144.64it/s] 
+Time for feature extraction: 569.712
+Feature extraction time for hessian_laplacian + surf: 573.98 s
+Mean accuracy for hessian_laplacian with surf at s=2.0: 74.897%
+
+Extracting features with hessian_laplacian + hog at s=2.0
+Reading person images: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 208/208 [00:01<00:00, 117.46it/s] 
+Reading cars images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 203/203 [00:01<00:00, 121.35it/s] 
+Reading bike images: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [00:01<00:00, 117.90it/s] 
+Time for feature extraction: 553.106
+Feature extraction time for hessian_laplacian + hog: 558.27 s
+Mean accuracy for hessian_laplacian with hog at s=2.0: 65.241%
+Mean accuracy for late fusion (harris_laplacian + surf) + (hessian_laplacian + surf) at s=2.0: 74.483%
+Feature extraction time for late fusion: harris_surf + hessian_surf: 1170.22 s
+Mean accuracy for late fusion (harris_laplacian + hog) + (hessian_laplacian + surf) at s=2.0: 75.172%
+Feature extraction time for late fusion: harris_hog + hessian_surf: 1171.11 s
+Mean accuracy for late fusion (hessian_laplacian + surf) + (hessian_laplacian + hog) at s=2.0: 75.310%
+Feature extraction time for late fusion: hessian_surf + hessian_hog: 1132.25 s

@@ -1,0 +1,45 @@
+Repeatability for solar.jpg
+Transformations: translation=(20, 15), rotation=45 deg, scaling=0.5 around image center
+
+  Harris [sigma=2.0, rho=2.5, k=0.05, theta_corn=0.005]
+    translation: repeatability=0.928, matches=283, pts1=361, pts2=305
+    rotation: repeatability=0.840, matches=231, pts1=361, pts2=275
+    scaling: repeatability=0.756, matches=62, pts1=361, pts2=82
+
+  Harris-Laplacian [sigma_0=2.0, rho_0=2.5, s=1.5, N=4, k=0.05, theta_corn=0.005]
+    translation: repeatability=0.877, matches=206, pts1=284, pts2=235
+    rotation: repeatability=0.692, matches=146, pts1=284, pts2=211
+    scaling: repeatability=0.507, matches=37, pts1=284, pts2=73
+
+  Hessian [sigma=2.0, theta_blob=0.005]
+    translation: repeatability=0.935, matches=574, pts1=629, pts2=614
+    rotation: repeatability=0.748, matches=372, pts1=629, pts2=497
+    scaling: repeatability=0.606, matches=103, pts1=629, pts2=170
+
+  Hessian-Laplacian [sigma_0=2.0, s=1.5, N=4, theta_blob=0.005]
+    translation: repeatability=0.934, matches=704, pts1=782, pts2=754
+    rotation: repeatability=0.720, matches=451, pts1=782, pts2=626
+    scaling: repeatability=0.554, matches=124, pts1=782, pts2=224
+
+Repeatability for blood_cells.jpg
+Transformations: translation=(20, 15), rotation=45 deg, scaling=0.5 around image center
+
+  Harris [sigma=2.0, rho=2.5, k=0.05, theta_corn=0.005]
+    translation: repeatability=0.910, matches=263, pts1=300, pts2=289
+    rotation: repeatability=0.855, matches=213, pts1=300, pts2=249
+    scaling: repeatability=0.591, matches=55, pts1=300, pts2=93
+
+  Harris-Laplacian [sigma_0=2.0, rho_0=2.5, s=1.5, N=4, k=0.05, theta_corn=0.005]
+    translation: repeatability=0.901, matches=281, pts1=318, pts2=312
+    rotation: repeatability=0.822, matches=198, pts1=318, pts2=241
+    scaling: repeatability=0.384, matches=43, pts1=318, pts2=112
+
+  Hessian [sigma=2.0, theta_blob=0.005]
+    translation: repeatability=0.916, matches=392, pts1=447, pts2=428
+    rotation: repeatability=0.805, matches=297, pts1=447, pts2=369
+    scaling: repeatability=0.592, matches=71, pts1=447, pts2=120
+
+  Hessian-Laplacian [sigma_0=2.0, s=1.5, N=4, theta_blob=0.005]
+    translation: repeatability=0.873, matches=447, pts1=527, pts2=512
+    rotation: repeatability=0.714, matches=305, pts1=527, pts2=427
+    scaling: repeatability=0.422, matches=54, pts1=527, pts2=128

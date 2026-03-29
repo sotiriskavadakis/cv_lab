@@ -13,6 +13,8 @@ from sklearn.cluster import KMeans
 from sklearn.multiclass import OneVsRestClassifier
 from scipy.spatial.distance import cdist
 
+RANDOM_SEED = 42
+
 # Part 3.1
 
 def featuresSURF(I, kp):
@@ -106,6 +108,46 @@ def rectangular_grid(N,M,cellsi,cellsj,overlap):
 
 # Part 3.2
 
+def add_gaussian_noise(I, rng=None, std=0.1):
+    if rng is None:
+        rng = np.random.default_rng(RANDOM_SEED)
+    noise = rng.normal(loc=0.0, scale=std * 255.0, size=I.shape)
+    noisy = I.astype(np.float32) + noise
+    return np.clip(noisy, 0, 255).astype(np.uint8)
+
+
+def add_random_rotation(I, rng=None, angle_range=(-45.0, 45.0)):
+    if rng is None:
+        rng = np.random.default_rng(RANDOM_SEED)
+    angle = float(rng.uniform(angle_range[0], angle_range[1]))
+    height, width = I.shape
+    center = (width / 2.0, height / 2.0)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    return cv2.warpAffine(
+        I,
+        rotation_matrix,
+        (width, height),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REFLECT_101,
+    )
+
+
+def distort_image(I, mode, rng=None):
+    if not mode:
+        return I
+    if mode is True:
+        mode = 'gaussian_noise'
+
+    if mode == 'gaussian_noise':
+        return add_gaussian_noise(I, rng=rng)
+    if mode == 'random_rotation':
+        return add_random_rotation(I, rng=rng)
+
+    raise ValueError(
+        "distort must be one of False, True, 'gaussian_noise', or 'random_rotation'."
+    )
+
+
 def FeatureExtraction(detector_fun, descriptor_fun, loadFile=None, saveFile=None, distort=False):
     ''' Extract features using the descriptor provided in constructor'''
 
@@ -127,18 +169,17 @@ def FeatureExtraction(detector_fun, descriptor_fun, loadFile=None, saveFile=None
     else:
         num_procs = min(3,num_cpus-1)
 
-    start_time = time.time()
+    rng = np.random.default_rng(RANDOM_SEED)
     im_full = []
     for name, catDir in categories:
         img_list = sorted(os.listdir(os.path.join(dataDir, catDir)))
         im_class = []
-        count = 0
         for img_file in tqdm(img_list, total=len(img_list), desc=f"Reading {name} images"):
             if name not in img_file:
                 continue
             I = cv2.cvtColor(cv2.imread(os.path.join(dataDir, catDir, img_file)), cv2.COLOR_BGR2GRAY)
             if distort:
-                I = distort_image(I)
+                I = distort_image(I, distort, rng=rng)
             I = cv2.resize(I, (0,0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
             im_class.append(I)
 
@@ -198,10 +239,16 @@ def BagOfWords(data_train, data_test):
     num_centers = 500
 
     train_all = np.concatenate(data_train, axis = 0)
-    np.random.shuffle(train_all)
+    rng = np.random.default_rng(RANDOM_SEED)
+    rng.shuffle(train_all)
     # print(train_all.shape)
 
-    clf = KMeans(n_clusters = num_centers, n_init=1, verbose=False)
+    clf = KMeans(
+        n_clusters=num_centers,
+        n_init=1,
+        random_state=RANDOM_SEED,
+        verbose=False,
+    )
 
     clf.fit(train_all[:round(slice_ratio*train_all.shape[0])])
     C = clf.cluster_centers_
