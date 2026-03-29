@@ -1674,31 +1674,73 @@ transfer learning.
 
 \subsubsection{Πειράματα Ανθεκτικότητας}
 
-Για να αξιολογηθεί η ανθεκτικότητα των CNN χαρακτηριστικών, επαναλήφθηκε το
-πείραμα εξαγωγής χαρακτηριστικών και εκπαίδευσης SVM σε δύο παραλλαγές
-παραμόρφωσης:
+Επαναλήφθηκαν τα πειράματα τόσο των τοπικών περιγραφητών (Μέρος~3.1,
+$s{=}1.5$) όσο και του CNN pipeline (Μέρος~3.2) υπό δύο παραμορφώσεις:
 \begin{itemize}
-    \item \textbf{Gaussian θόρυβος:} Πρόσθεση θορύβου $\mathcal{N}(0, 0.1^2)$
-    στον κανονικοποιημένο τανυστή εικόνας, πριν τη διέλευση από το δίκτυο.
-    \item \textbf{Τυχαία περιστροφή:} Περιστροφή κατά τυχαία γωνία
-    $\theta \sim \mathcal{U}(-45^\circ, 45^\circ)$.
+    \item \textbf{Gaussian θόρυβος:} Πρόσθεση $\mathcal{N}(0, 1^2)$ στον
+    κανονικοποιημένο τανυστή της εικόνας (τιμές περίπου στο $[-2.1,\,2.6]$)
+    πριν από οποιαδήποτε επεξεργασία.
+    \item \textbf{Τυχαία περιστροφή:} Γωνία $\theta \sim \mathcal{U}(-45^\circ, 45^\circ)$.
 \end{itemize}
 
-Τα αποτελέσματα συνοψίζονται παρακάτω:
+\paragraph{Τοπικοί περιγραφητές (Μέρος 3.1).}
+Ο Πίνακας~\ref{tab:robustness_local} συγκρίνει την ακρίβεια baseline
+($s{=}1.5$, χωρίς παραμόρφωση) με τις δύο παραμορφωμένες εκδόσεις για
+όλους τους συνδυασμούς detector/descriptor.
+
+\begin{table}[H]
+\centering
+\small
+\caption{5-fold accuracy (\%) τοπικών περιγραφητών υπό παραμορφώσεις ($s=1.5$).}
+\label{tab:robustness_local}
+\begin{tabular}{lrrr}
+\hline
+Συνδυασμός & Baseline & Gaussian θόρυβος & Τυχαία περιστροφή \\
+\hline
+Harris-Laplacian + SURF  & 73.10 & 69.66 $\pm$ 2.47 & 64.83 $\pm$ 2.00 \\
+Harris-Laplacian + HOG   & 63.45 & 59.17 $\pm$ 5.00 & 53.79 $\pm$ 4.47 \\
+Hessian-Laplacian + SURF & 72.59 & 72.83 $\pm$ 2.16 & 68.00 $\pm$ 2.07 \\
+Hessian-Laplacian + HOG  & 63.10 & 62.76 $\pm$ 2.96 & 53.10 $\pm$ 2.86 \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{CNN χαρακτηριστικά (Μέρος 3.2).}
+Τα αποτελέσματα 5-fold cross-validation για το MobileNetV3 + SVM pipeline
+συνοψίζονται παρακάτω:
 \begin{itemize}
-    \item \textbf{Baseline (χωρίς παραμόρφωση):} 96.55\%
-    \item \textbf{Gaussian θόρυβος} ($\sigma = 0.1$): 94.02\%
-    \item \textbf{Τυχαία περιστροφή} (εώς $\pm 45^\circ$): 95.11\%
+    \item \textbf{Baseline (χωρίς παραμόρφωση):} 94.34\% $\pm$ 1.47\%
+    \item \textbf{Gaussian θόρυβος} ($\sigma = 1$): 80.14\% $\pm$ 2.74\%
+    \item \textbf{Τυχαία περιστροφή} (έως $\pm 45^\circ$): 91.72\% $\pm$ 1.69\%
 \end{itemize}
 
-Και οι δύο παραμορφώσεις προκαλούν μικρή μόνο πτώση ($\approx 1$--$2.5\%$),
-γεγονός που αποδεικνύει τη γενική ανθεκτικότητα των CNN χαρακτηριστικών.
-Η περιστροφή επηρεάζει ελαφρώς λιγότερο από τον θόρυβο, κάτι που αναμένεται:
-το global average pooling της \texttt{avgpool} συνοψίζει τη χωρική πληροφορία
-κάθε καναλιού σε έναν μόνο αριθμό, παρέχοντας εγγενή ανθεκτικότητα σε
-χωρικές μεταβολές. Ο Gaussian θόρυβος, από την άλλη, διαταράσσει άμεσα τις
-ενεργοποιήσεις όλων των καναλιών, παρόλο που οι BatchNorm και τα διαδοχικά
-pooling εξομαλύνουν μέρος της επίδρασής του.
+\paragraph{Ανάλυση και σύγκριση.}
+Τα αποτελέσματα αναδεικνύουν σαφείς διαφορές μεταξύ μεθόδων και
+παραμορφώσεων:
+
+\textbf{Robustness στον Gaussian θόρυβο:}
+Οι τοπικοί SURF περιγραφητές παραμένουν σχεδόν αναλλοίωτοι
+(π.χ.\ Hessian+SURF: $72.59\% \to 72.83\%$), ενώ οι HOG περιγραφητές
+παρουσιάζουν μικρή πτώση ($\approx 3$--$4\%$). Αντίθετα, το CNN
+υποφέρει σημαντικά ($94.34\% \to 80.14\%$, πτώση $\approx 14\%$). Ο
+θόρυβος εδώ έχει $\sigma{=}1$ στον κανονικοποιημένο χώρο, που αντιστοιχεί
+σε $\approx 40$--$100\%$ της τιμής κάθε pixel — είναι δηλαδή ισχυρή
+παραμόρφωση. Τα SURF/HOG υπολογίζονται πάνω σε τοπικές κλίσεις που
+αποσβένουν φυσικά τέτοιες προσθετικές διαταραχές, ενώ οι βαθιές
+ενεργοποιήσεις του CNN ενσωματώνουν άμεσα τον θόρυβο σε όλη την
+ιεραρχία χαρακτηριστικών.
+
+\textbf{Robustness στην τυχαία περιστροφή:}
+Εδώ η εικόνα αντιστρέφεται. Το CNN πέφτει ελάχιστα
+($94.34\% \to 91.72\%$, $\approx 2.6\%$), χάρη στο global average
+pooling που συνοψίζει τη χωρική πληροφορία κάθε καναλιού σε έναν αριθμό,
+παρέχοντας εγγενή χωρική αναλλοίωτη δομή. Οι τοπικοί SURF περιγραφητές
+εμφανίζουν μεγαλύτερη πτώση ($\approx 5$--$8\%$) παρά τη θεωρητική τους
+rotation invariance: αυτή εφαρμόζεται στο descriptor ενός μεμονωμένου
+keypoint, αλλά η συνολική χωρική κατανομή των keypoints αλλάζει με την
+περιστροφή, επηρεάζοντας τη BoVW αναπαράσταση. Οι HOG περιγραφητές
+υποφέρουν περισσότερο ($\approx 10\%$), καθώς δεν διαθέτουν rotation
+invariance ούτε σε επίπεδο descriptor.
 
 \subsubsection{Bonus: Σύγκριση Μεθόδων (LoRA \& MLP)}
 
@@ -1832,7 +1874,7 @@ fold (Σχήμα~\ref{fig:gradcam_misc}). Στο πιο χαρακτηριστι
 \bibitem{marr1980}
 D. Marr and E. Hildreth,
 Theory of edge detection,
-\textit{Proceedings of the Royal Society of London B}, vol.\ 207, pp.\ 187--217, 1980.
+\textit{Proceedings of the Royal Society of London B}, vol.\ 207, pp.\ 187-217, 1980.
 
 \bibitem{maragos2005}
 Π. Μαραγκός,
@@ -1847,22 +1889,22 @@ Theory of edge detection,
 \bibitem{harris1988}
 C. Harris and M. Stephens,
 \textit{A Combined Corner and Edge Detector},
-Proceedings of the 4th Alvey Vision Conference, pp.\ 147--151, 1988.
+Proceedings of the 4th Alvey Vision Conference, pp.\ 147-151, 1988.
 
 \bibitem{lindeberg1998}
 T. Lindeberg,
 \textit{Feature Detection with Automatic Scale Selection},
-\textit{International Journal of Computer Vision}, vol.\ 30, no.\ 2, pp.\ 79--116, 1998.
+\textit{International Journal of Computer Vision}, vol.\ 30, no.\ 2, pp.\ 79-116, 1998.
 
 \bibitem{mikolajczyk2004}
 K. Mikolajczyk and C. Schmid,
 \textit{Scale \& Affine Invariant Interest Point Detectors},
-\textit{International Journal of Computer Vision}, vol.\ 60, no.\ 1, pp.\ 63--86, 2004.
+\textit{International Journal of Computer Vision}, vol.\ 60, no.\ 1, pp.\ 63-86, 2004.
 
 \bibitem{howard2019}
 A. Howard et al.,
 \textit{Searching for MobileNetV3},
-\textit{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, pp.\ 1314--1324, 2019.
+\textit{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, pp.\ 1314-1324, 2019.
 
 \bibitem{hu2021lora}
 E. J. Hu et al.,

@@ -9,7 +9,6 @@ import torch.nn as nn
 import torchvision
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights # load pretrained weights and transforms
 from torchvision.models.feature_extraction import create_feature_extractor # extract features from intermediate layers
-from sklearn.model_selection import train_test_split
 import scipy.io
 import cv26_lab1_part3_utils as p3
 from sklearn.svm import SVC
@@ -179,7 +178,7 @@ for cls, img in sample_per_class.items():
 
 # 3.2.5 Robustness experiments
 
-def add_gaussian_noise(img_tensor, std=0.1):
+def add_gaussian_noise(img_tensor, std=1):
     return img_tensor + torch.randn_like(img_tensor) * std
 
 def random_rotation(img_tensor):
@@ -210,13 +209,23 @@ def evaluate_pipeline(imgs, lbls, label):
             out = feature_extractor(img.unsqueeze(0))
             feats.append(out['avgpool'].squeeze().numpy())
     feats = np.array(feats)
-    Xtr, Xte, ytr, yte = train_test_split(
-        feats, lbls, test_size=0.3, random_state=42, stratify=lbls
-    )
-    sc = StandardScaler()
-    Xtr, Xte = sc.fit_transform(Xtr), sc.transform(Xte)
-    acc, _, _ = p3.svm(Xtr, ytr, Xte, yte)
-    print(f"{label} accuracy: {acc*100:.2f}%")
+    feats_by_class = [
+        [feats[i] for i in range(len(feats)) if lbls[i] == c]
+        for c in range(len(classes))
+    ]
+    fold_accs = []
+    _cwd = os.getcwd()
+    os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))
+    for k in range(5):
+        data_tr, lbl_tr, data_te, lbl_te = p3.createTrainTest(feats_by_class, k)
+        X_tr, X_te = np.array(data_tr), np.array(data_te)
+        y_tr, y_te = np.array(lbl_tr), np.array(lbl_te)
+        sc = StandardScaler()
+        X_tr, X_te = sc.fit_transform(X_tr), sc.transform(X_te)
+        acc, _, _ = p3.svm(X_tr, y_tr, X_te, y_te)
+        fold_accs.append(acc)
+    os.chdir(_cwd)
+    print(f"{label} accuracy: {np.mean(fold_accs)*100:.2f}% (±{np.std(fold_accs)*100:.2f}%)")
 
 evaluate_pipeline(*load_and_augment(add_gaussian_noise), "Gaussian noise")
 evaluate_pipeline(*load_and_augment(random_rotation),    "Random rotation")
