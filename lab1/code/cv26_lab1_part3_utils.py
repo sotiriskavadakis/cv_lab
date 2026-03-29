@@ -108,10 +108,12 @@ def rectangular_grid(N,M,cellsi,cellsj,overlap):
 
 # Part 3.2
 #function for adding gaussian noise
-def add_gaussian_noise(I, rng=None, std=0.1):
+def add_gaussian_noise(I, rng=None, std=1):
     if rng is None:
         rng = np.random.default_rng(RANDOM_SEED)
-    noise = rng.normal(loc=0.0, scale=std * 255.0, size=I.shape)
+    # Match the effective noise scale used in part3_2 after ImageNet normalization.
+    imagenet_gray_std = 0.225
+    noise = rng.normal(loc=0.0, scale=std * 255.0 * imagenet_gray_std, size=I.shape)
     noisy = I.astype(np.float32) + noise
     return np.clip(noisy, 0, 255).astype(np.uint8)
 

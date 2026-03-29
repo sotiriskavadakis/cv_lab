@@ -179,7 +179,7 @@ for cls, img in sample_per_class.items():
 
 # 3.2.5 Robustness experiments
 
-def add_gaussian_noise(img_tensor, std=0.1):
+def add_gaussian_noise(img_tensor, std=1):
     return img_tensor + torch.randn_like(img_tensor) * std
 
 def random_rotation(img_tensor):

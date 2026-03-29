@@ -383,6 +383,9 @@ if __name__ == "__main__":
         fig.savefig(plot_path, dpi=150, bbox_inches="tight")
         plt.close(fig)
         print(f"Saved extraction time sweep plot to: {plot_path}")
+
+
+        
     #case 2 we call part3_2_5 to run 
     else:
         #again we define the two detectors for 3.2.5 with the helping functions in part2 but with fixed s value of 1.5 since this was the most robust value
@@ -426,7 +429,11 @@ if __name__ == "__main__":
         for distortion_mode, report_name in augmentation_configs:
             print(f"\n=== Part 3.2.5: {report_name}, s=1.5 ===")
             summary[report_name] = {}
-
+            fusion_harris_surf_features = None
+            fusion_harris_hog_features = None
+            fusion_hessian_surf_features = None
+            fusion_hessian_hog_features = None
+            #for the simple combinations
             for detector_name, detector_fun in detector_configs:
                 for descriptor_name, descriptor_fun in descriptor_configs:
                     save_path = os.path.join(
@@ -476,6 +483,67 @@ if __name__ == "__main__":
                         f"{100.0 * mean_accuracy:.3f}% (+/- {100.0 * std_accuracy:.3f}%)"
                     )
                     summary[report_name][f"{detector_name} + {descriptor_name}"] = mean_accuracy
+                        #store the features for late fusion combinations after having computed the simple ones for the current distortion mode and s value of 1.5
+                    if detector_name == "harris-laplacian" and descriptor_name == "surf":
+                        fusion_harris_surf_features = features
+                    elif detector_name == "harris-laplacian" and descriptor_name == "hog":
+                        fusion_harris_hog_features = features
+                    elif detector_name == "hessian-laplacian" and descriptor_name == "surf":
+                        fusion_hessian_surf_features = features
+                    elif detector_name == "hessian-laplacian" and descriptor_name == "hog":
+                        fusion_hessian_hog_features = features
+
+            fusion_configs = [
+                (
+                    "late fusion: harris_surf + hessian_surf",
+                    fusion_harris_surf_features,
+                    fusion_hessian_surf_features,
+                ),
+                (
+                    "late fusion: harris_hog + hessian_surf",
+                    fusion_harris_hog_features,
+                    fusion_hessian_surf_features,
+                ),
+                (
+                    "late fusion: hessian_surf + hessian_hog",
+                    fusion_hessian_surf_features,
+                    fusion_hessian_hog_features,
+                ),
+            ]
+
+            for fusion_name, first_features, second_features in fusion_configs:
+                if first_features is None or second_features is None:
+                    continue
+
+                accuracies = []
+                for k in range(5):
+                    first_train, label_train, first_test, label_test = p3.createTrainTest(
+                        first_features, k
+                    )
+                    second_train, label_train_2, second_test, label_test_2 = p3.createTrainTest(
+                        second_features, k
+                    )
+
+                    if label_train != label_train_2 or label_test != label_test_2:
+                        raise ValueError("Late fusion requires identical train/test splits.")
+
+                    bof_train_first, bof_test_first = p3.BagOfWords(first_train, first_test)
+                    bof_train_second, bof_test_second = p3.BagOfWords(second_train, second_test)
+                    bof_train_fused = np.hstack((bof_train_first, bof_train_second))
+                    bof_test_fused = np.hstack((bof_test_first, bof_test_second))
+
+                    accuracy, _, _ = p3.svm(
+                        bof_train_fused, label_train, bof_test_fused, label_test
+                    )
+                    accuracies.append(float(accuracy))
+
+                mean_accuracy = float(np.mean(accuracies))
+                std_accuracy = float(np.std(accuracies))
+                print(
+                    f"{report_name} | {fusion_name}: "
+                    f"{100.0 * mean_accuracy:.3f}% (+/- {100.0 * std_accuracy:.3f}%)"
+                )
+                summary[report_name][fusion_name] = mean_accuracy
 
         print("\n=== Summary ===")
         for augmentation_name, results in summary.items():
