@@ -12,7 +12,7 @@ from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.multiclass import OneVsRestClassifier
 from scipy.spatial.distance import cdist
-
+#set random seed for reproducibility
 RANDOM_SEED = 42
 
 # Part 3.1
@@ -107,7 +107,7 @@ def rectangular_grid(N,M,cellsi,cellsj,overlap):
     return (P, patch_i, patch_j)
 
 # Part 3.2
-
+#function for adding gaussian noise
 def add_gaussian_noise(I, rng=None, std=0.1):
     if rng is None:
         rng = np.random.default_rng(RANDOM_SEED)
@@ -115,7 +115,7 @@ def add_gaussian_noise(I, rng=None, std=0.1):
     noisy = I.astype(np.float32) + noise
     return np.clip(noisy, 0, 255).astype(np.uint8)
 
-
+#function for adding random rotation
 def add_random_rotation(I, rng=None, angle_range=(-45.0, 45.0)):
     if rng is None:
         rng = np.random.default_rng(RANDOM_SEED)
@@ -131,7 +131,7 @@ def add_random_rotation(I, rng=None, angle_range=(-45.0, 45.0)):
         borderMode=cv2.BORDER_REFLECT_101,
     )
 
-
+#function for applying the distortions to the images depending on the mode provided as an argument , gaussian noise or random rotation , is called from feature extraction  function when the argument passed to it is true
 def distort_image(I, mode, rng=None):
     if not mode:
         return I
