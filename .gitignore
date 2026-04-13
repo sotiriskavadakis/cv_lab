@@ -214,4 +214,13 @@ lab1/results/part3/extraction_time_cache.json
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# OS files
 .DS_Store
+
+# Lab1 submission archive & extracted folder
+lab1/cv26_Lab1_Total_SotirisKavadakis_03122035_IgnatiosDalampekis_03122017/
+lab1/cv26_Lab1_Total_SotirisKavadakis_03122035_IgnatiosDalampekis_03122017.zip
+
+# Lab2 data (videos, utilities)
+lab2/data/
