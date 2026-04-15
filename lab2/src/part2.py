@@ -265,8 +265,6 @@ for det_name, det_func, sigma, tau, thresh, top_n in viz_configs:
             plt.close()
 
 # ─── 2.3: Bag of Visual Words + SVM classification ──────────────────────────
-import pickle
-from PIL import Image
 
 actions = ['running', 'handclapping', 'walking']
 label_map = {a: i for i, a in enumerate(actions)}
