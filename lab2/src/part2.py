@@ -5,22 +5,29 @@ matplotlib.use('Agg')
 import numpy as np
 import cv2
 import glob
+import pickle
+from PIL import Image
 from scipy.ndimage import convolve1d, maximum_filter
 from matplotlib import pyplot as plt
 from matplotlib.patches import Circle
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'data', 'cv26_lab2_part2_3'))
+np.random.seed(42)  # for reproducibility
+
+lab2_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(lab2_dir, 'data', 'cv26_lab2_part2_3'))
 from cv26_lab2_utils import read_video, show_detection, orientation_histogram, bag_of_words, svm_train_test
 
-data_dir = os.path.join(os.path.dirname(__file__), 'data', 'cv26_lab2_part2_3', 'KTH')
-results_dir = os.path.join(os.path.dirname(__file__), 'results')
-pictures_dir = os.path.join(os.path.dirname(__file__), 'docs', 'pictures')
+data_dir     = os.path.join(lab2_dir, 'data', 'cv26_lab2_part2_3', 'KTH')
+results_dir  = os.path.join(lab2_dir, 'results')
+pictures_dir = os.path.join(lab2_dir, 'docs', 'pictures')
 os.makedirs(results_dir, exist_ok=True)
 os.makedirs(pictures_dir, exist_ok=True)
 
 # clean up old outputs from this script
 for old in glob.glob(os.path.join(results_dir, '*.png')) + glob.glob(os.path.join(results_dir, '*.gif')):
     os.remove(old)
+
+# ─── 2.1: interest point detectors (Harris3D, Gabor) ──────────────────────────────────────────────
 
 def gaussian_smooth_3d(volume, sigma_s, sigma_t):
     n_s = int(np.ceil(3 * sigma_s)) * 2 + 1
@@ -31,7 +38,6 @@ def gaussian_smooth_3d(volume, sigma_s, sigma_t):
     out = convolve1d(out, k_s, axis=1)
     out = convolve1d(out, k_t, axis=2)
     return out
-
 
 #def harris_detector(video, sigma=4, tau=1.5, k=0.00005, s=1, thresh=0.0001, top_n=500):
 def harris_detector(video, sigma=4, tau=1.5, k=0.005, s=2, thresh=0.1, top_n=500):
@@ -135,6 +141,8 @@ def gabor_detector(video, sigma=4, tau=1.5, thresh=0.1, top_n=500):
     ])
     return points, H
 
+# ─── 2.2: HOG/HOF descriptors ───────────────────────────────────────────────
+
 def compute_descriptors(video, points, nbins=8, ncells=3):
     """Compute HOG/HOF descriptors for each interest point.
 
@@ -151,30 +159,33 @@ def compute_descriptors(video, points, nbins=8, ncells=3):
     Returns:
         descriptors: Nx(2 * ncells * ncells * nbins) array
     """
-    H, W, T = video.shape
-    desc_dim = 2 * ncells * ncells * nbins
-    descriptors = np.zeros((len(points), desc_dim))
+    H, W, T = video.shape # video dimensions (height, width, frames)
+    desc_dim = 2 * ncells * ncells * nbins # HOG + HOF dimensions (concatenated)
+    descriptors = np.zeros((len(points), desc_dim)) # this is what we will return
 
-    # 2.2.1: precompute gradient (Gx, Gy) for each frame
-    Gx_all = np.zeros_like(video, dtype=np.float32)
-    Gy_all = np.zeros_like(video, dtype=np.float32)
-    for fr in range(T):
-        Gx_all[:, :, fr] = cv2.Sobel(video[:, :, fr], cv2.CV_32F, 1, 0, ksize=3)
-        Gy_all[:, :, fr] = cv2.Sobel(video[:, :, fr], cv2.CV_32F, 0, 1, ksize=3)
+    # 2.2.1: precompute gradient (Gx, Gy) for each frame via central differences [-1, 0, 1] (for HOG)
+    d = np.array([-1.0, 0.0, 1.0]) # central difference kernel 
+    video_f = video.astype(np.float32) # convert to float for convolution
+    Gx_all = convolve1d(video_f, d, axis=1) # gradient along x-axis
+    Gy_all = convolve1d(video_f, d, axis=0) # gradient along y-axis
 
-    # 2.2.1: precompute TV-L1 optical flow for consecutive frames
-    # input must be uint8
-    oflow = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)
-    flow_all = {}  # frame t -> flow from frame t to t+1
-    for fr in range(T - 1):
-        flow_all[fr] = oflow.calc(video[:, :, fr], video[:, :, fr + 1], None)
+    # 2.2.1: precompute TV-L1 optical flow 
+    # input must be uint8!!
+    # we compute the optical flow for each pixel as a vector (fx, fy), meaning how much it moves in x and y from frame t to t+1.
+    oflow = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1) # TV-L1 optical flow object
+    flow_all = {}  # here we store the optical flow vectors for each frame pair (t, t+1)
+    for fr in range(T - 1): # for each frame except the last one
+        flow_all[fr] = oflow.calc(video[:, :, fr], video[:, :, fr + 1], None) # calc the optical flow between frame fr and fr+1
+    # now flow_all[fr] is an H x W x 2 array where flow_all[fr][:, :, 0] is fx and flow_all[fr][:, :, 1] is fy for frame fr
+    # and we also have the gradients Gx_all and Gy_all for each frame
+    # and we will go ahead and compute the HOG and HOF descriptors for each interest point in the next step
 
     # 2.2.2: extract HOG/HOF descriptors per interest point
-    for i, (x, y, t, sigma) in enumerate(points):
-        x, y, t = int(x), int(y), int(t)
-        half = int(2 * sigma)  # patch is 4*sigma, half-size is 2*sigma
+    for i, (x, y, t, sigma) in enumerate(points): # for each interest point:
+        x, y, t = int(x), int(y), int(t) # they were originally floats -> convert to integers
+        half = int(2 * sigma)  # the patch is +/- 2*sigma around the point
 
-        # clip patch to image boundaries
+        # make sure we dont go out of bounds
         y0 = max(0, y - half)
         y1 = min(H, y + half)
         x0 = max(0, x - half)
@@ -205,100 +216,57 @@ def compute_descriptors(video, points, nbins=8, ncells=3):
 
     return descriptors
 
-
+# one sample video per action for visualization (2.1.4)
 sample_videos = {
     'walking':      os.path.join(data_dir, 'walking',      'person04_walking_d1_uncomp.avi'),
     'running':      os.path.join(data_dir, 'running',      os.listdir(os.path.join(data_dir, 'running'))[0]),
     'handclapping': os.path.join(data_dir, 'handclapping', os.listdir(os.path.join(data_dir, 'handclapping'))[0]),
 }
-
-# parameter sets to experiment with
-param_sets = [
-    {'sigma': 2, 'tau': 1.5},
-    {'sigma': 4, 'tau': 1.5},
-    {'sigma': 2, 'tau': 1.0},
-]
-
 selected_frames = [10, 25, 40]
 
-for action, path in sample_videos.items():
-    print(f"\n=== {action} ===")
-    video = read_video(path, gray=True, num_frames=50)
+# ─── 2.1.4: visualize H map + detections (always regenerated) ────────────────
 
-    for params in param_sets:
-        sigma, tau = params['sigma'], params['tau']
-        tag = f"s{sigma}_t{tau}"
-        print(f"  params: sigma={sigma}, tau={tau}")
+viz_configs = [
+    ('harris', harris_detector, 2, 1.5, 0.1, 500),
+    ('gabor',  gabor_detector,  2, 1.5, 0.1, 500),
+]
+print("\n=== 2.1.4: Visualization ===")
+for det_name, det_func, sigma, tau, thresh, top_n in viz_configs:
+    tag = f"{det_name}_s{sigma}_t{tau}_thr{thresh}"
+    for s_action, s_path in sample_videos.items():
+        s_video = read_video(s_path, gray=True, num_frames=50)
+        s_pts, s_H = det_func(s_video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+        print(f"  {det_name} {s_action}: {len(s_pts)} pts")
 
-        pts_harris, H_harris = harris_detector(video, sigma=sigma, tau=tau)
-        print(f"    Harris: {len(pts_harris)} points")
-
-        pts_gabor, H_gabor = gabor_detector(video, sigma=sigma, tau=tau)
-        print(f"    Gabor:  {len(pts_gabor)} points")
-
-        # Save H maps and detections for selected frames
         for frame_idx in selected_frames:
-            if frame_idx >= video.shape[2]:
+            if frame_idx >= s_video.shape[2]:
                 continue
 
-            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-            fig.suptitle(f'{action} — frame {frame_idx} (σ={sigma}, τ={tau})', fontsize=14)
-
-            axes[0, 0].imshow(video[:, :, frame_idx], cmap='gray')
-            axes[0, 0].set_title('Original frame')
-
-            axes[0, 1].imshow(H_harris[:, :, frame_idx], cmap='hot')
-            axes[0, 1].set_title('Harris response H(x,y,t)')
-
-            axes[1, 0].imshow(H_gabor[:, :, frame_idx], cmap='hot')
-            axes[1, 0].set_title('Gabor response H(x,y,t)')
-
-            # detections overlay
-            axes[1, 1].imshow(video[:, :, frame_idx], cmap='gray')
-            for pts, color, label in [(pts_harris, 'g', 'Harris'), (pts_gabor, 'r', 'Gabor')]:
-                frame_pts = pts[pts[:, 2] == frame_idx] if len(pts) > 0 else []
-                for p in frame_pts:
-                    circ = Circle((int(p[0]), int(p[1])), 2 * int(p[3]),
-                                  edgecolor=color, fill=False, linewidth=1.5)
-                    axes[1, 1].add_patch(circ)
-            axes[1, 1].set_title('Detections (green=Harris, red=Gabor)')
-
-            for ax in axes.flat:
-                ax.axis('off')
-            plt.tight_layout()
-            fname = f"{action}_{tag}_frame{frame_idx}.png"
-            plt.savefig(os.path.join(results_dir, fname), dpi=150, bbox_inches='tight')
+            # H map
+            fig, ax = plt.subplots(figsize=(6, 5))
+            ax.imshow(s_H[:, :, frame_idx], cmap='hot')
+            ax.axis('off')
+            plt.tight_layout(pad=0)
+            plt.savefig(os.path.join(results_dir, f"{s_action}_{tag}_frame{frame_idx}_H.png"),
+                        dpi=150, bbox_inches='tight')
             plt.close()
-            print(f"    Saved {fname}")
 
-        # Save detection frames as GIF for the default params
-        if params == param_sets[0]:
-            from PIL import Image
-            for detector_name, pts in [('harris', pts_harris), ('gabor', pts_gabor)]:
-                gif_frames = []
-                for fr in range(video.shape[2]):
-                    fig, ax = plt.subplots(figsize=(6, 5))
-                    ax.imshow(video[:, :, fr], cmap='gray')
-                    ax.set_title(f'{action} — {detector_name} (σ={sigma}, τ={tau}) — frame {fr}')
-                    frame_pts = pts[pts[:, 2] == fr] if len(pts) > 0 else []
-                    for p in frame_pts:
-                        circ = Circle((int(p[0]), int(p[1])), 2 * int(p[3]),
-                                      edgecolor='g', fill=False, linewidth=1.5)
-                        ax.add_patch(circ)
-                    ax.axis('off')
-                    fig.canvas.draw()
-                    buf = fig.canvas.buffer_rgba()
-                    img = np.asarray(buf)[:, :, :3].copy()
-                    gif_frames.append(img)
-                    plt.close()
-                pil_frames = [Image.fromarray(f) for f in gif_frames]
-                gif_path = os.path.join(results_dir, f"{action}_{detector_name}.gif")
-                pil_frames[0].save(gif_path, save_all=True, append_images=pil_frames[1:],
-                                   duration=40, loop=0)
-                print(f"    Saved {action}_{detector_name}.gif")
+            # detections
+            fig, ax = plt.subplots(figsize=(6, 5))
+            ax.imshow(s_video[:, :, frame_idx], cmap='gray')
+            frame_pts = s_pts[s_pts[:, 2] == frame_idx] if len(s_pts) > 0 else []
+            for p in frame_pts:
+                ax.add_patch(Circle((int(p[0]), int(p[1])), 2 * int(p[3]),
+                                    edgecolor='g', fill=False, linewidth=1.5))
+            ax.axis('off')
+            plt.tight_layout(pad=0)
+            plt.savefig(os.path.join(results_dir, f"{s_action}_{tag}_frame{frame_idx}_det.png"),
+                        dpi=150, bbox_inches='tight')
+            plt.close()
 
 # ─── 2.3: Bag of Visual Words + SVM classification ──────────────────────────
 import pickle
+from PIL import Image
 
 actions = ['running', 'handclapping', 'walking']
 label_map = {a: i for i, a in enumerate(actions)}
@@ -308,144 +276,205 @@ train_file = os.path.join(data_dir, 'traininng_videos.txt')
 with open(train_file) as f:
     train_names = set(line.strip() for line in f if line.strip())
 
-# collect all videos with labels, split into train/test
 all_videos = []
 for action in actions:
-    action_dir = os.path.join(data_dir, action)
-    for fname in sorted(os.listdir(action_dir)):
-        if not fname.endswith('.avi'):
-            continue
-        all_videos.append((action, fname, os.path.join(action_dir, fname)))
+    for fname in sorted(os.listdir(os.path.join(data_dir, action))):
+        if fname.endswith('.avi'):
+            all_videos.append((action, fname, os.path.join(data_dir, action, fname)))
 
 train_videos = [(a, n, p) for a, n, p in all_videos if n in train_names]
 test_videos  = [(a, n, p) for a, n, p in all_videos if n not in train_names]
 print(f"\n=== 2.3: BoVW + SVM ===")
 print(f"Train: {len(train_videos)}, Test: {len(test_videos)}")
 
-# 2.3.2 & 2.3.3: run pipeline for each detector
-cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
+cache_dir = os.path.join(lab2_dir, 'cache')
 os.makedirs(cache_dir, exist_ok=True)
 
-for det_name, det_func in [('harris', harris_detector), ('gabor', gabor_detector)]:
-    print(f"\n--- Detector: {det_name} ---")
+# delete old-format cache files (naming without _s{sigma}_t{tau}_n{top_n})
+for f in glob.glob(os.path.join(cache_dir, '*.pkl')):
+    if '_s' not in os.path.basename(f):
+        os.remove(f)
+        print(f"Removed old cache: {os.path.basename(f)}")
 
-    # extract descriptors (or load from cache)
-    cache_path = os.path.join(cache_dir, f'desc_{det_name}.pkl')
-    if os.path.exists(cache_path):
-        print(f"  Loading cached descriptors from {cache_path}")
-        with open(cache_path, 'rb') as f:
-            cached = pickle.load(f)
-        desc_train = cached['desc_train']
-        desc_test = cached['desc_test']
-        train_labels = cached['train_labels']
-        test_labels = cached['test_labels']
-    else:
-        desc_train = []
-        train_labels = []
-        for action, name, path in train_videos:
-            video = read_video(path, gray=True, num_frames=100)
-            pts, _ = det_func(video, sigma=2, tau=1.5)
-            desc = compute_descriptors(video, pts)
-            desc_train.append(desc)
-            train_labels.append(label_map[action])
-            print(f"  train {name}: {len(pts)} pts, desc {desc.shape}")
-
-        desc_test = []
-        test_labels = []
-        for action, name, path in test_videos:
-            video = read_video(path, gray=True, num_frames=100)
-            pts, _ = det_func(video, sigma=2, tau=1.5)
-            desc = compute_descriptors(video, pts)
-            desc_test.append(desc)
-            test_labels.append(label_map[action])
-            print(f"  test  {name}: {len(pts)} pts, desc {desc.shape}")
-
-        with open(cache_path, 'wb') as f:
-            pickle.dump({
-                'desc_train': desc_train, 'desc_test': desc_test,
-                'train_labels': train_labels, 'test_labels': test_labels
-            }, f)
-        print(f"  Saved cache to {cache_path}")
-
-    train_labels = np.array(train_labels)
-    test_labels = np.array(test_labels)
-
-    # 2.3.2: Bag of Visual Words
-    bow_train, bow_test = bag_of_words(desc_train, desc_test, num_centers=50)
-    print(f"  BoW: train={bow_train.shape}, test={bow_test.shape}")
-
-    # 2.3.3: SVM classification
-    accuracy, predictions = svm_train_test(bow_train, train_labels, bow_test, test_labels)
-    print(f"  Accuracy: {accuracy:.2%}")
-    print(f"  Predictions: {predictions}")
-    print(f"  True labels: {test_labels}")
-
-# ─── 2.3.4: Experiments ──────────────────────────────────────────────────────
-print("\n=== 2.3.4: Experiments ===")
-
-def load_cache(name):
-    with open(os.path.join(cache_dir, f'desc_{name}.pkl'), 'rb') as f:
-        return pickle.load(f)
-
-h = load_cache('harris')
-g = load_cache('gabor')
-
-combined_train = [np.vstack([h['desc_train'][i], g['desc_train'][i]]) for i in range(len(h['desc_train']))]
-combined_test  = [np.vstack([h['desc_test'][i],  g['desc_test'][i]])  for i in range(len(h['desc_test']))]
-
-train_labels = np.array(g['train_labels'])
-test_labels  = np.array(g['test_labels'])
-
-# (detector name, train descriptors, test descriptors)
+# 2.3.4: all experiments to run
+# each entry: (det_name, det_func, sigma, tau, thresh, top_n, desc_type, K)
+# det_name 'harris+gabor' pools interest points from both detectors
+# desc_type: 'HOG+HOF' = all 144 dims, 'HOG' = first 72, 'HOF' = last 72
 experiments = [
-    ('harris',       h['desc_train'], h['desc_test']),
-    ('gabor',        g['desc_train'], g['desc_test']),
-    ('harris+gabor', combined_train,  combined_test),
+    # baseline
+    ('harris',       harris_detector, 2, 1.5, 0.1,  500,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  500,  'HOG+HOF', 50),
+    # descriptor type
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  500,  'HOG',     50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  500,  'HOF',     50),
+    ('harris',       harris_detector, 2, 1.5, 0.1,  500,  'HOG',     50),
+    ('harris',       harris_detector, 2, 1.5, 0.1,  500,  'HOF',     50),
+    # combined detector
+    ('harris+gabor', None,            2, 1.5, 0.1,  500,  'HOG+HOF', 50),
+    # K variation
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  500,  'HOG+HOF', 100),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  500,  'HOG+HOF', 200),
+    # sigma variation
+    ('gabor',        gabor_detector,  3, 1.5, 0.1,  500,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  4, 1.5, 0.1,  500,  'HOG+HOF', 50),
+    # tau variation
+    ('gabor',        gabor_detector,  2, 1.0, 0.1,  500,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 2.0, 0.1,  500,  'HOG+HOF', 50),
+    # thresh variation (gabor)
+    ('gabor',        gabor_detector,  2, 1.5, 0.05, 500,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.2,  500,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.3,  500,  'HOG+HOF', 50),
+    # thresh variation (harris)
+    ('harris',       harris_detector, 2, 1.5, 0.05, 500,  'HOG+HOF', 50),
+    # top_n variation
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  200,  'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  1000, 'HOG+HOF', 50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  2000, 'HOG+HOF', 50),
+    # N=1000 follow-up: descriptor type and K
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  1000, 'HOG',     50),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  1000, 'HOG+HOF', 100),
+    ('gabor',        gabor_detector,  2, 1.5, 0.1,  1000, 'HOG+HOF', 200),
+    # harris τ variation
+    ('harris',       harris_detector, 2, 1.0, 0.1,  500,  'HOG+HOF', 50),
+    # harris with reference-paper params (σ=1, τ=0.7)
+    ('harris',       harris_detector, 1, 0.7, 0.1,  500,  'HOG+HOF', 50),
+    ('harris',       harris_detector, 1, 0.7, 0.1,  500,  'HOG',     50),
 ]
 
-# HOG = first 72 dims, HOF = last 72 (ncells*ncells*nbins = 3*3*8 = 72)
-desc_slices = [('HOG+HOF', slice(None)), ('HOG', slice(0, 72)), ('HOF', slice(72, None))]
+# cache dict: key = (det_name, sigma, tau, thresh, top_n), value = loaded cache dict
+loaded = {}
 
-print(f"\n{'Detector':<15} {'Desc':<10} {'K':<6} Accuracy")
-print("-" * 42)
-for det, d_tr, d_ts in experiments:
-    for desc_name, slc in desc_slices:
-        for K in (50, 100, 200):
-            tr = [d[slc] for d in d_tr]
-            ts = [d[slc] for d in d_ts]
-            total_pts = sum(len(d) for d in tr)
-            if any(len(d) == 0 for d in tr) or any(len(d) == 0 for d in ts) or total_pts < K:
-                print(f"{det:<15} {desc_name:<10} {K:<6} skipped (only {total_pts} pts < K)")
-                continue
-            bow_tr, bow_ts = bag_of_words(tr, ts, num_centers=K)
-            acc, _ = svm_train_test(bow_tr, train_labels, bow_ts, test_labels)
-            print(f"{det:<15} {desc_name:<10} {K:<6} {acc:.2%}")
+print(f"\n{'Detector':<15} {'σ':<4} {'τ':<5} {'thr':<6} {'N':<6} {'Desc':<10} {'K':<6} Accuracy")
+print("-" * 64)
 
-# σ variation: Gabor, K=50, HOG+HOF
-print("\n--- σ variation (Gabor, K=50) ---")
-for sigma_val in (2, 3, 4):
-    cache_name = 'gabor' if sigma_val == 2 else f'gabor_s{sigma_val}'
-    cache_path_s = os.path.join(cache_dir, f'desc_{cache_name}.pkl')
-    if os.path.exists(cache_path_s):
-        c = load_cache(cache_name)
-        d_tr_s, d_ts_s = c['desc_train'], c['desc_test']
+acc_rows = []
+
+for det_name, det_func, sigma, tau, thresh, top_n, desc_type, K in experiments:
+
+    # 2.3.2: load or compute descriptors, cache to disk
+    if det_name == 'harris+gabor':
+        for name, func in [('harris', harris_detector), ('gabor', gabor_detector)]:
+            if (name, sigma, tau, thresh, top_n) not in loaded:
+                cache_path = os.path.join(cache_dir, f'desc_{name}_s{sigma}_t{tau}_thr{thresh}_n{top_n}.pkl')
+                if os.path.exists(cache_path):
+                    with open(cache_path, 'rb') as f:
+                        loaded[(name, sigma, tau, thresh, top_n)] = pickle.load(f)
+                else:
+                    print(f"  Computing {name} s={sigma} t={tau} thr={thresh} n={top_n}...")
+                    desc_train, desc_test, tr_lbl, ts_lbl = [], [], [], []
+                    for action, n, path in train_videos:
+                        video = read_video(path, gray=True, num_frames=100)
+                        pts, _ = func(video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+                        desc_train.append(compute_descriptors(video, pts))
+                        tr_lbl.append(label_map[action])
+                    for action, n, path in test_videos:
+                        video = read_video(path, gray=True, num_frames=100)
+                        pts, _ = func(video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+                        desc_test.append(compute_descriptors(video, pts))
+                        ts_lbl.append(label_map[action])
+                    loaded[(name, sigma, tau, thresh, top_n)] = {'desc_train': desc_train, 'desc_test': desc_test,
+                                                                  'train_labels': tr_lbl, 'test_labels': ts_lbl}
+                    with open(cache_path, 'wb') as f:
+                        pickle.dump(loaded[(name, sigma, tau, thresh, top_n)], f)
+
+        h = loaded[('harris', sigma, tau, thresh, top_n)]
+        g = loaded[('gabor',  sigma, tau, thresh, top_n)]
+        desc_train = [np.vstack([h['desc_train'][i], g['desc_train'][i]]) for i in range(len(train_videos))]
+        desc_test  = [np.vstack([h['desc_test'][i],  g['desc_test'][i]])  for i in range(len(test_videos))]
+        train_labels = np.array(g['train_labels'])
+        test_labels  = np.array(g['test_labels'])
     else:
-        d_tr_s, tr_lbl_s = [], []
-        for action, name, path in train_videos:
-            video = read_video(path, gray=True, num_frames=100)
-            pts, _ = gabor_detector(video, sigma=sigma_val, tau=1.5)
-            d_tr_s.append(compute_descriptors(video, pts))
-            tr_lbl_s.append(label_map[action])
-        d_ts_s, ts_lbl_s = [], []
-        for action, name, path in test_videos:
-            video = read_video(path, gray=True, num_frames=100)
-            pts, _ = gabor_detector(video, sigma=sigma_val, tau=1.5)
-            d_ts_s.append(compute_descriptors(video, pts))
-            ts_lbl_s.append(label_map[action])
-        with open(cache_path_s, 'wb') as f:
-            pickle.dump({'desc_train': d_tr_s, 'desc_test': d_ts_s,
-                         'train_labels': tr_lbl_s, 'test_labels': ts_lbl_s}, f)
+        if (det_name, sigma, tau, thresh, top_n) not in loaded:
+            cache_path = os.path.join(cache_dir, f'desc_{det_name}_s{sigma}_t{tau}_thr{thresh}_n{top_n}.pkl')
+            if os.path.exists(cache_path):
+                with open(cache_path, 'rb') as f:
+                    loaded[(det_name, sigma, tau, thresh, top_n)] = pickle.load(f)
+            else:
+                print(f"  Computing {det_name} s={sigma} t={tau} thr={thresh} n={top_n}...")
+                desc_train, desc_test, tr_lbl, ts_lbl = [], [], [], []
+                for action, name, path in train_videos:
+                    video = read_video(path, gray=True, num_frames=100)
+                    pts, _ = det_func(video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+                    desc_train.append(compute_descriptors(video, pts))
+                    tr_lbl.append(label_map[action])
+                    print(f"    train {name}: {len(pts)} pts")
+                for action, name, path in test_videos:
+                    video = read_video(path, gray=True, num_frames=100)
+                    pts, _ = det_func(video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+                    desc_test.append(compute_descriptors(video, pts))
+                    ts_lbl.append(label_map[action])
+                loaded[(det_name, sigma, tau, thresh, top_n)] = {'desc_train': desc_train, 'desc_test': desc_test,
+                                                                  'train_labels': tr_lbl, 'test_labels': ts_lbl}
+                with open(cache_path, 'wb') as f:
+                    pickle.dump(loaded[(det_name, sigma, tau, thresh, top_n)], f)
 
-    bow_tr, bow_ts = bag_of_words(d_tr_s, d_ts_s, num_centers=50)
+        c = loaded[(det_name, sigma, tau, thresh, top_n)]
+        desc_train   = c['desc_train']
+        desc_test    = c['desc_test']
+        train_labels = np.array(c['train_labels'])
+        test_labels  = np.array(c['test_labels'])
+
+    # slice descriptor dimensions based on desc_type
+    if desc_type == 'HOG':
+        tr = [d[:, :72] for d in desc_train]
+        ts = [d[:, :72] for d in desc_test]
+    elif desc_type == 'HOF':
+        tr = [d[:, 72:] for d in desc_train]
+        ts = [d[:, 72:] for d in desc_test]
+    else:
+        tr = desc_train
+        ts = desc_test
+
+    # 2.3.3: BoVW + SVM
+    total_pts = sum(len(d) for d in tr)
+    if total_pts == 0 or total_pts // 2 < K:
+        print(f"{det_name:<15} {sigma:<4} {tau:<5} {thresh:<6} {top_n:<6} {desc_type:<10} {K:<6} skipped ({total_pts} pts)")
+        continue
+
+    bow_tr, bow_ts = bag_of_words(tr, ts, num_centers=K)
     acc, _ = svm_train_test(bow_tr, train_labels, bow_ts, test_labels)
-    print(f"  σ={sigma_val}: {acc:.2%}")
+    print(f"{det_name:<15} {sigma:<4} {tau:<5} {thresh:<6} {top_n:<6} {desc_type:<10} {K:<6} {acc:.2%}")
+    acc_rows.append((det_name, sigma, tau, thresh, top_n, desc_type, K, acc))
+
+# Generate GIFs using best-accuracy params per detector (harris and gabor)
+harris_rows = [r for r in acc_rows if r[0] == 'harris']
+gabor_rows = [r for r in acc_rows if r[0] == 'gabor']
+
+best_harris = max(harris_rows, key=lambda r: r[7]) if harris_rows else None
+best_gabor = max(gabor_rows, key=lambda r: r[7]) if gabor_rows else None
+
+print("\n=== 2.1.4: GIFs (best params per detector) ===")
+for best_row in [best_harris, best_gabor]:
+    if best_row is None:
+        continue
+
+    det_name, sigma, tau, thresh, top_n, desc_type, K, acc = best_row
+    det_func = harris_detector if det_name == 'harris' else gabor_detector
+    print(
+        f"  best {det_name}: sigma={sigma}, tau={tau}, thr={thresh}, "
+        f"N={top_n}, desc={desc_type}, K={K}, acc={acc:.2%}"
+    )
+
+    for s_action, s_path in sample_videos.items():
+        s_video = read_video(s_path, gray=True, num_frames=50)
+        s_pts, _ = det_func(s_video, sigma=sigma, tau=tau, thresh=thresh, top_n=top_n)
+
+        gif_frames = []
+        for fr in range(s_video.shape[2]):
+            fig, ax = plt.subplots(figsize=(6, 5))
+            ax.imshow(s_video[:, :, fr], cmap='gray')
+            frame_pts = s_pts[s_pts[:, 2] == fr] if len(s_pts) > 0 else []
+            for p in frame_pts:
+                ax.add_patch(Circle((int(p[0]), int(p[1])), 2 * int(p[3]),
+                                    edgecolor='g', fill=False, linewidth=1.5))
+            ax.axis('off')
+            fig.canvas.draw()
+            gif_frames.append(np.asarray(fig.canvas.buffer_rgba())[:, :, :3].copy())
+            plt.close()
+
+        pil_frames = [Image.fromarray(f) for f in gif_frames]
+        gif_name = f"{s_action}_{det_name}_best.gif"
+        gif_path = os.path.join(results_dir, gif_name)
+        pil_frames[0].save(gif_path, save_all=True, append_images=pil_frames[1:],
+                           duration=40, loop=0)
+        print(f"  Saved {gif_name}")
