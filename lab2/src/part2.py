@@ -413,7 +413,9 @@ for det, d_tr, d_ts in experiments:
         for K in (50, 100, 200):
             tr = [d[slc] for d in d_tr]
             ts = [d[slc] for d in d_ts]
-            if any(len(d) == 0 for d in tr) or any(len(d) == 0 for d in ts):
+            total_pts = sum(len(d) for d in tr)
+            if any(len(d) == 0 for d in tr) or any(len(d) == 0 for d in ts) or total_pts < K:
+                print(f"{det:<15} {desc_name:<10} {K:<6} skipped (only {total_pts} pts < K)")
                 continue
             bow_tr, bow_ts = bag_of_words(tr, ts, num_centers=K)
             acc, _ = svm_train_test(bow_tr, train_labels, bow_ts, test_labels)
