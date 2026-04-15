@@ -1,0 +1,287 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Margins ──────────────────────────────────────────────────────────────────
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+
+% ── Font & Language ──────────────────────────────────────────────────────────
+\usepackage{polyglossia}
+\setmainlanguage{greek}
+\setotherlanguage{english}
+\setmainfont{CMU Serif}
+\setsansfont{CMU Sans Serif}
+\setmonofont{CMU Typewriter Text}
+\newfontfamily\greekfonttt{CMU Typewriter Text}
+\newfontfamily\greekfontsf{CMU Sans Serif}
+\newfontfamily\greekfont{CMU Serif}
+
+% ── Line spacing ─────────────────────────────────────────────────────────────
+\usepackage{setspace}
+\setstretch{1.15}
+
+% ── Math ─────────────────────────────────────────────────────────────────────
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% ── Graphics & Figures ───────────────────────────────────────────────────────
+\usepackage{graphicx}
+\graphicspath{{./pictures/}}
+\usepackage{caption}
+\usepackage{subcaption}
+\captionsetup{
+    font=small,
+    labelfont=bf,
+    labelsep=period,
+    justification=centering
+}
+\usepackage{float}
+
+% ── Tables ───────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+
+% ── Code listings ────────────────────────────────────────────────────────────
+\usepackage{minted}
+\setminted{
+    fontsize=\small,
+    frame=lines,
+    framesep=6pt,
+    linenos,
+    breaklines
+}
+
+% ── Section styling ──────────────────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{0.6em}{}
+\titlespacing{\section}{0pt}{1.4em}{0.6em}
+\titlespacing{\subsection}{0pt}{1em}{0.4em}
+\titlespacing{\subsubsection}{0pt}{0.8em}{0.2em}
+
+% ── Header / Footer ──────────────────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{\small\textit{Όραση Υπολογιστών - 2η Εργαστηριακή Άσκηση}}
+\fancyhead[R]{\small\textit{ΕΜΠ ΗΜΜΥ, 2025-2026}}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+\addtolength{\topmargin}{-2pt}
+
+% ── TikZ ─────────────────────────────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+
+% ── Misc ─────────────────────────────────────────────────────────────────────
+\usepackage{xcolor}
+\usepackage{ragged2e}
+\usepackage{microtype}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    urlcolor=blue!70!black,
+    citecolor=green!50!black
+}
+
+% ── Layout ───────────────────────────────────────────────────────────────────
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\setlength{\emergencystretch}{3em}
+\sloppy
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Title page ───────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \thispagestyle{empty}
+    \begin{center}
+
+        \begin{minipage}{0.3\textwidth}
+            \includegraphics[width=\linewidth]{ntua_logo.png}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.65\textwidth}
+            \centering
+            {\LARGE \textbf{Εθνικό Μετσόβιο Πολυτεχνείο}}\\[0.3cm]
+            {\large \textbf{Σχολή Ηλεκτρολόγων Μηχανικών \& Μηχανικών Υπολογιστών}}\\[0.2cm]
+            \rule{\linewidth}{0.5pt}\\[0.3cm]
+            {\large Εξάμηνο 8\textsuperscript{o}}\\[0.1cm]
+            {\large \textbf{Όραση Υπολογιστών}}\\
+        \end{minipage}
+
+        \vspace{2cm}
+
+        {\Huge \textbf{2η Εργαστηριακή Άσκηση}}\\[0.5cm]
+        \rule{0.6\linewidth}{0.8pt}\\[0.5cm]
+        {\LARGE \textbf{Εκτίμηση Οπτικής Ροής,\\[0.2cm]
+        Εξαγωγή Χαρακτηριστικών σε Βίντεο\\[0.2cm]
+        Αναγνώρισης Δράσεων,\\[0.2cm]
+        Συνένωση Εικόνων}}\\[0.5cm]
+        \rule{0.6\linewidth}{0.8pt}
+
+        \vspace{2.5cm}
+
+        {\large \textbf{Μέλη Ομάδας}}\\[0.6cm]
+        \begin{tabular}{rl}
+            \textbf{Καβαδάκης Σωτήρης}   & 03122035 \\[0.3cm]
+            \textbf{Δαλαμπέκης Ιγνάτιος} & 03122017 \\
+        \end{tabular}
+
+        \vfill
+
+        {\large Αθήνα, Απρίλιος 2026}
+
+    \end{center}
+\end{titlepage}
+\clearpage
+
+% ── Table of Contents ────────────────────────────────────────────────────────
+\tableofcontents
+\clearpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Παρακολούθηση Προσώπου και Χεριών με Χρήση της Μεθόδου Οπτικής Ροής των Lucas-Kanade}
+
+\subsection{Υλοποίηση του Αλγορίθμου των Lucas-Kanade}
+
+% TODO
+
+\subsection{Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}
+
+% TODO
+
+\subsection{Πολυ-Κλιμακωτός Υπολογισμός Οπτικής Ροής}
+
+% TODO
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}
+
+Στο δεύτερο μέρος της άσκησης ασχολούμαστε με την εξαγωγή χωρο-χρονικών χαρακτηριστικών
+από βίντεο ανθρωπίνων δράσεων, με στόχο την κατηγοριοποίησή τους. Χρησιμοποιούνται
+βίντεο από 3 κλάσεις δράσεων (walking, running, handclapping) της βάσης KTH,
+τα οποία φορτώνονται ως τρισδιάστατοι πίνακες $H \times W \times T$ (grayscale) μέσω
+της συνάρτησης \texttt{read\_video}.
+
+\subsection{Χωρο-χρονικά Σημεία Ενδιαφέροντος}
+
+Οι ανιχνευτές τοπικών χαρακτηριστικών αναζητούν χωρο-χρονικά σημεία ενδιαφέροντος,
+δηλαδή περιοχές που χαρακτηρίζονται από σύνθετη κίνηση ή απότομες μεταβολές στην
+εμφάνιση του βίντεο. Υλοποιήθηκαν δύο ανιχνευτές: ο Harris3D και ο Gabor.
+
+\subsubsection{Ανιχνευτής Harris3D}
+
+Ο ανιχνευτής Harris3D αποτελεί επέκταση σε 3 διαστάσεις του ανιχνευτή γωνιών
+Harris-Stephens που υλοποιήθηκε στην 1η εργαστηριακή άσκηση. Για κάθε voxel
+$(x,y,t)$ του βίντεο υπολογίζεται ο $3 \times 3$ δομικός τανυστής:
+\begin{equation}
+    \mathbf{M}(x,y,t;\,\sigma,\tau) = g(x,y,t;\,s\sigma,s\tau) \ast
+    \begin{pmatrix}
+        L_x^2    & L_x L_y & L_x L_t \\
+        L_x L_y  & L_y^2   & L_y L_t \\
+        L_x L_t  & L_y L_t & L_t^2
+    \end{pmatrix}
+\end{equation}
+όπου $L_x, L_y, L_t$ είναι οι χωρο-χρονικές παράγωγοι του εξομαλυσμένου βίντεο
+$L = g(\sigma,\tau) \ast I$ και $g(s\sigma, s\tau)$ ο γκαουσιανός πυρήνας ομαλοποίησης
+σε κλίμακα ολοκλήρωσης.
+
+Η υλοποίηση ακολουθεί τα εξής βήματα:
+\begin{enumerate}
+    \item \textbf{Εξομάλυνση} του βίντεο σε κλίμακα $(\sigma, \tau)$
+          μέσω διαχωρίσιμης 3D Gaussian συνέλιξης (\texttt{convolve1d} ανά άξονα,
+          με πυρήνες από \texttt{cv2.getGaussianKernel}).
+    \item \textbf{Υπολογισμός παραγώγων} $L_x, L_y, L_t$ με τον πυρήνα κεντρικών
+          διαφορών $[-1,\; 0,\; 1]$ εφαρμοσμένο στην κατάλληλη διάσταση.
+    \item \textbf{Δομικός τανυστής}: υπολογισμός των 6 γινομένων παραγώγων
+          ($L_x^2$, $L_y^2$, $L_t^2$, $L_xL_y$, $L_xL_t$, $L_yL_t$) και
+          εξομάλυνσή τους σε κλίμακα ολοκλήρωσης $(s\sigma, s\tau)$.
+    \item \textbf{Κριτήριο γωνιότητας}:
+          \begin{equation}
+              H(x,y,t) = \det(\mathbf{M}) - k \cdot \mathrm{trace}^3(\mathbf{M})
+          \end{equation}
+    \item \textbf{Επιλογή σημείων}: εφαρμογή non-maximum suppression σε γειτονιά
+          $3\times3\times3$ και επιστροφή των $N$ σημείων με τη μεγαλύτερη τιμή $H$.
+\end{enumerate}
+
+Ενδεικτικές τιμές παραμέτρων: $\sigma = 4$, $s = 2$, $\tau = 1.5$, $k = 0.005$.
+
+\subsubsection{Ανιχνευτής Gabor}
+
+% TODO
+
+\subsubsection{Απόρριψη Ομαλών Περιοχών}
+
+% TODO
+
+\subsubsection{Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}
+
+% TODO
+
+\subsection{Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}
+
+\subsubsection{Υπολογισμός Gradient και Οπτικής Ροής}
+
+% TODO
+
+\subsubsection{Εξαγωγή HOG/HOF Περιγραφητών}
+
+% TODO
+
+\subsection{Κατασκευή Bag of Visual Words και Ταξινόμηση Δράσεων με SVM}
+
+\subsubsection{Διαχωρισμός Train/Test}
+
+% TODO
+
+\subsubsection{Bag of Visual Words}
+
+% TODO
+
+\subsubsection{Ταξινόμηση με SVM}
+
+% TODO
+
+\subsubsection{Πειραματισμοί και Σχολιασμός}
+
+% TODO
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}
+
+\subsection{2D Χαρακτηριστικά με MobileNet}
+
+\subsubsection{Φόρτωση Βίντεο UCF11}
+
+% TODO
+
+\subsubsection{Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}
+
+% TODO
+
+\subsubsection{Ταξινόμηση με SVM}
+
+% TODO
+
+\subsection{3D Χαρακτηριστικά με x3d\_xs}
+
+\subsubsection{Φόρτωση Μοντέλου x3d\_xs}
+
+% TODO
+
+\subsubsection{Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}
+
+% TODO
+
+\subsubsection{Ταξινόμηση και Confusion Matrix}
+
+% TODO
+
+\subsubsection{Σύγκριση 2D και 3D Προσεγγίσεων}
+
+% TODO
+
+\end{document}

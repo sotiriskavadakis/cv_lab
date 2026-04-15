@@ -1,0 +1,29 @@
+\xpg@aux {}{greek}
+\contentsline {section}{\numberline {1}Παρακολούθηση Προσώπου και Χεριών με Χρήση της Μεθόδου Οπτικής Ροής των Lucas-Kanade}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Υλοποίηση του Αλγορίθμου των Lucas-Kanade}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Πολυ-Κλιμακωτός Υπολογισμός Οπτικής Ροής}{3}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Χωρο-χρονικά Σημεία Ενδιαφέροντος}{3}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Ανιχνευτής Harris3D}{3}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Ανιχνευτής Gabor}{5}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}Απόρριψη Ομαλών Περιοχών}{5}{subsubsection.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.1.4}Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}{5}{subsubsection.2.1.4}%
+\contentsline {subsection}{\numberline {2.2}Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}{5}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Υπολογισμός Gradient και Οπτικής Ροής}{5}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Εξαγωγή HOG/HOF Περιγραφητών}{5}{subsubsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.3}Κατασκευή Bag of Visual Words και Ταξινόμηση Δράσεων με SVM}{5}{subsection.2.3}%
+\contentsline {subsubsection}{\numberline {2.3.1}Διαχωρισμός Train/Test}{5}{subsubsection.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.3.2}Bag of Visual Words}{5}{subsubsection.2.3.2}%
+\contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{5}{subsubsection.2.3.3}%
+\contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{5}{subsubsection.2.3.4}%
+\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{5}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{5}{subsubsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{5}{subsubsection.3.1.2}%
+\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{5}{subsubsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{5}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{5}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{5}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{5}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{5}{subsubsection.3.2.4}%
