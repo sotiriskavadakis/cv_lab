@@ -334,6 +334,7 @@ if __name__ == '__main__':
     # Get frame size from first frame
     sample = cv2.imread(os.path.join(DATA_DIR, frame_files[0]))
     H_vid, W_vid = sample.shape[:2]
+    #out_vid = os.path.join(RESULTS_DIR, 'tracking_tvl.mp4')
 
     #out_vid = os.path.join(RESULTS_DIR, 'tracking_uni.mp4')
     out_vid = os.path.join(RESULTS_DIR, 'tracking_multi.mp4')
@@ -349,7 +350,7 @@ if __name__ == '__main__':
         1, NUM_FRAMES, figsize=(3 * NUM_FRAMES, 4), constrained_layout=True
     )
     fig_track.suptitle('Tracking: face + hands', fontsize=11)
-
+    tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)
     for idx, fname in enumerate(frame_files):
         frame_bgr  = cv2.imread(os.path.join(DATA_DIR, fname))
         frame_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
@@ -379,22 +380,27 @@ if __name__ == '__main__':
                 cw  = min(int(round(bw)), frame_gray.shape[1] - cx)
                 ch  = min(int(round(bh)), frame_gray.shape[0] - cy)
 
-                crop1 = frame_gray[cy:cy+ch, cx:cx+cw]
-                crop2 = next_gray[cy:cy+ch, cx:cx+cw]
+                crop_I1 = frame_gray[cy:cy+ch, cx:cx+cw]
+                crop_I2 = next_gray[cy:cy+ch, cx:cx+cw]
 
-                pts = cv2.goodFeaturesToTrack(crop2, maxCorners=200,
+                pts = cv2.goodFeaturesToTrack(crop_I2, maxCorners=200,
                                               qualityLevel=0.01, minDistance=5)
                 if pts is not None and len(pts) > 0:
                     features = pts.reshape(-1, 2)
-                    #d_x, d_y = lk(crop1, crop2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
-                    d_x, d_y = lk_multiscale(crop1, crop2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0, num_scales=4)
+                    #d_x, d_y = lk(crop_I1, crop_I2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
+                    #flow = tvl1_estimator.calc(crop_I1, crop_I2, None)  # (H, W, 2)
+    #               fx = np.clip(features[:, 0].astype(int), 0, crop_I1.shape[1] - 1)
+    #               fy = np.clip(features[:, 1].astype(int), 0, crop_I1.shape[0] - 1)
+    #               d_x = flow[fy, fx, 0]   # (N,)
+    #               d_y = flow[fy, fx, 1]   # (N,)
+                    d_x, d_y = lk_multiscale(crop_I1, crop_I2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0, num_scales=4)
                     dx_box, dy_box = displ(-d_x, -d_y)
                     box_state[name][0] += dx_box
                     box_state[name][1] += dy_box
 
     writer.release()
     print(f'  saved {os.path.basename(out_vid)}')
-
+    #out_img = os.path.join(RESULTS_DIR, 'tracking_tvl.jpg')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_uni.jpg')
     out_img = os.path.join(RESULTS_DIR, 'tracking_multi.jpg')
 
