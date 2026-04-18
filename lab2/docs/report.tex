@@ -250,36 +250,68 @@ $3\times3\times3$ και διατήρηση των $N$ ισχυρότερων.
 $\det(\mathbf{M})$ γίνεται αναλυτικά μέσω της εκτεταμένης μορφής της $3\times3$
 ορίζουσας, αποφεύγοντας αριθμητική αποσύνθεση σε ιδιοτιμές.
 
+Αν και στη βιβλιογραφία \cite{laptev2008} προτείνεται πολυκλιμακική ανίχνευση (εξαγωγή σημείων σε πολλαπλές κλίμακες $(\sigma_i,\tau_j)$ για μείωση υπολογιστικού κόστους και ανεξαρτησία από σφάλματα επιλογής κλίμακας), στην παρούσα εργασία χρησιμοποιήθηκε ενιαία κλίμακα, εστιάζοντας στη μελέτη της επίδρασης των παραμέτρων $\sigma$, $\tau$ και $k$.
+
 \subsubsection{Ανιχνευτής Gabor}
 
-Ο ανιχνευτής Gabor χρησιμοποιεί χρονικά φίλτρα Gabor για την ανίχνευση βίντεο-σημείων
-με έντονη χρονική μεταβολή. Ορίζονται δύο συμπληρωματικά φίλτρα — ένα άρτιο (even,
-συνημίτονο) και ένα περιττό (odd, ημίτονο) — πολλαπλασιαζόμενα με ένα γκαουσιανό
-παράθυρο:
+Ο ανιχνευτής Gabor αποτελεί χωρο-χρονική μέθοδο ανίχνευσης σημείων ενδιαφέροντος
+βασισμένη σε φιλτράρισμα με τράπεζα φίλτρων Gabor. Σε αντίθεση με τον Harris3D, που
+ανιχνεύει voxels με μεγάλη \emph{γεωμετρική} μεταβολή σε όλες τις κατευθύνσεις, ο
+Gabor εστιάζει στην \emph{ενέργεια} τοπικής κίνησης: ανιχνεύει περιοχές που
+παρουσιάζουν έντονη χρονική μεταβολή συγκεκριμένης χωροχρονικής συχνότητας. Αυτό τον κάνει
+πιο «επιεική» ως προς τη χωρική γεωμετρία αλλά πιο εκλεκτικό ως προς τον
+\emph{ρυθμό} της κίνησης, ιδιότητα ιδιαίτερα χρήσιμη για περιοδικές δράσεις
+όπως βάδισμα και χειροκρότημα.
+
+Η βασική ιδέα: ένα φίλτρο Gabor είναι επιλεκτικό τόσο ως προς τη χωρική / χρονική
+\emph{κλίμακα} όσο και ως προς τη \emph{συχνότητα} κίνησης. Ορίζεται ως γκαουσιανή
+περιβάλλουσα διαμορφωμένη από ημιτονοειδή φέρουσα:
+\begin{equation}
+    g_c(x,y,t;\,\sigma_x,\sigma_y,\sigma_t) =
+    \frac{1}{(2\pi)^{3/2}\sigma_x\sigma_y\sigma_t}
+    \exp\!\left[-\left(\frac{x^2}{2\sigma_x^2}+\frac{y^2}{2\sigma_y^2}+\frac{t^2}{2\sigma_t^2}\right)\right]
+    \cos(\omega_{x_0}x + \omega_{y_0}y + \omega_{t_0}t)
+\end{equation}
+όπου $(\sigma_x,\sigma_y,\sigma_t)$ ορίζουν τη χωρο-χρονική κλίμακα (εύρος ζώνης) του
+φίλτρου, και $(\omega_{x_0},\omega_{y_0},\omega_{t_0})$ είναι οι κεντρικές γωνιακές
+συχνότητες στις οποίες αποκρίνεται. Στο πεδίο συχνοτήτων το φίλτρο έχει απόκριση
+ζωνοπερατού φίλτρου: δύο Γκαουσιανοί όγκοι συγκεντρωμένοι γύρω από $\pm(\omega_{x_0},\omega_{y_0},\omega_{t_0})$.
+
+Για κάθε κλίμακα $(\sigma, \tau)$ ορίζεται ένα \textbf{ζεύγος τετραγωνισμού}
+(quadrature pair) — ένα άρτιο φίλτρο (συνημίτονο) και ένα περιττό (ημίτονο):
 \begin{align}
-    h_{\text{ev}}(t;\,\tau) &= \cos(2\pi \omega t)\cdot g(t;\,\tau), \\
-    h_{\text{od}}(t;\,\tau) &= \sin(2\pi \omega t)\cdot g(t;\,\tau),
+    h_{\text{ev}}(t;\,\tau) &= \cos(2\pi \omega t)\cdot g(t;\,\tau), &
+    h_{\text{od}}(t;\,\tau) &= \sin(2\pi \omega t)\cdot g(t;\,\tau)
 \end{align}
-όπου $g(t;\tau) = \exp\!\bigl(-t^2/(2\tau^2)\bigr)$ είναι η γκαουσιανή συνάρτηση
-και $\omega = 4/\tau$ η χρονική συχνότητα. Το χρονικό παράθυρο εκτείνεται σε
-$t \in [-2\tau, 2\tau]$ και τα φίλτρα κανονικοποιούνται ως προς τη νόρμα $L_1$.
+όπου $g(t;\tau) = \exp\!\bigl(-t^2/(2\tau^2)\bigr)$ και $\omega = 4/\tau$.
+Τα φίλτρα κανονικοποιούνται ως προς τη νόρμα $L_1$ και εκτείνονται σε
+$t \in [-2\tau, 2\tau]$. Το ζεύγος αξιοποιεί την ιδιότητα ότι $\cos^2\!+\sin^2\!=1$:
+η συνδυασμένη ενέργεια εξόδου δεν εξαρτάται από τη χρονική φάση της κίνησης, άρα
+ανιχνεύει ρυθμικά κινούμενες δομές ανεξαρτήτως της στιγμής μέτρησης.
 
-Η ανίχνευση ακολουθεί τα βήματα:
-\begin{enumerate}
-    \item \textbf{Χωρική εξομάλυνση} του βίντεο με 2D Gaussian ($\sigma$) κατά
-          τους χωρικούς άξονες $x,y$.
-    \item \textbf{Χρονική συνέλιξη} με $h_{\text{ev}}$ και $h_{\text{od}}$
-          κατά τον άξονα $t$, παράγοντας αποκρίσεις $R_{\text{ev}}$ και $R_{\text{od}}$.
-    \item \textbf{Κριτήριο ενέργειας}:
-          \begin{equation}
-              H(x,y,t) = R_{\text{ev}}^2(x,y,t) + R_{\text{od}}^2(x,y,t)
-          \end{equation}
-    \item \textbf{Επιλογή σημείων}: κατωφλίωση, NMS $3\times3\times3$ και top-$N$.
-\end{enumerate}
+Η σχέση $\omega = 4/\tau$ δεν είναι τυχαία: εξασφαλίζει ότι στο χρονικό παράθυρο
+$[-2\tau, 2\tau]$ χωράνε ακριβώς \emph{δύο πλήρεις ταλαντώσεις} της ημιτονοειδούς
+φέρουσας. Αυτό διατηρεί τo φίλτρο ανταποκρινόμενο σε ένα σαφώς ορισμένο εύρος
+χρονικών συχνοτήτων: αρκετά στενό ώστε να είναι εκλεκτικό, αρκετά πλατύ ώστε
+να μην απαιτεί ακριβή συγχρονισμό με τον ρυθμό κίνησης.
 
-Ο ανιχνευτής Gabor εστιάζει αμιγώς στη \emph{χρονική} μεταβολή και αδιαφορεί για
-τη χωρική δομή, σε αντίθεση με τον Harris3D που απαιτεί πλούσια χωρο-χρονική
-βαθμίδα και στις τρεις διαστάσεις.
+Το κριτήριο ανίχνευσης είναι το άθροισμα τετραγώνων των δύο αποκρίσεων:
+\begin{equation}
+    H(x,y,t) =
+    \bigl(I \ast h_{\text{ev}}\bigr)^2(x,y,t) +
+    \bigl(I \ast h_{\text{od}}\bigr)^2(x,y,t)
+\end{equation}
+
+Όσον αφορά την υλοποίηση του, εκμεταλλευόμαστε τη \emph{διαχωρισιμότητα} του 3D φίλτρου
+Gabor: χωρική εξομάλυνση (2D Gaussian, κλίμακα $\sigma$) και χρονική συνέλιξη
+(1D Gabor, κλίμακα $\tau$) εκτελούνται ανεξάρτητα κατά τους αντίστοιχους άξονες,
+μειώνοντας σημαντικά το υπολογιστικό κόστος. Σημειώνεται ότι στο πλήρες 3D μοντέλο
+(εξ.~παραπάνω) το χωρικό τμήμα του φίλτρου έχει και χωρικές συχνότητες
+$(\omega_{x_0}, \omega_{y_0}) \neq 0$, δηλαδή είναι \emph{προσανατολισμένο} στον
+χώρο. Στην υλοποίησή μας ο χωρικός προσανατολισμός αφαιρείται θέτοντας
+$\omega_{x_0}\!=\!\omega_{y_0}\!=\!0$, οπότε η χωρική συνιστώσα εκφυλίζεται σε
+ισότροπη Γκαουσιανή εξομάλυνση — απλοποίηση που μειώνει το μέγεθος της τράπεζας
+φίλτρων αλλά χάνει την ευαισθησία σε χωρική κατεύθυνση κίνησης.
 
 \subsubsection{Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}
 
@@ -303,115 +335,331 @@ $t \in [-2\tau, 2\tau]$ και τα φίλτρα κανονικοποιούντ�
 (\textit{walking}, \textit{running}, \textit{handclapping}), με παραμέτρους
 $\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, $N{=}500$.
 
-Τα Σχήματα~\ref{fig:harris_det} και~\ref{fig:gabor_det} δείχνουν τα εντοπισμένα
-σημεία (πράσινοι κύκλοι ακτίνας $2\sigma$) για αντιπροσωπευτικά frame.
-Τα Σχήματα~\ref{fig:harris_H} και~\ref{fig:gabor_H} δείχνουν τον αντίστοιχο χάρτη
-απόκρισης $H$.
+Για κάθε κλάση παρουσιάζονται διαδοχικά: Harris3D εντοπισμός, Harris3D heatmap,
+Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπευτικά frames.
 
+% ══ walking ════════════════════════════════════════════════════════════════════
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{walking}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame12_det.png}
+        \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{running}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame27_det.png}
+        \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{handclapping}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame42_det.png}
+        \caption{frame 42}
     \end{subfigure}
-    \caption{Harris3D: εντοπισμένα σημεία ενδιαφέροντος (frame 25).}
-    \label{fig:harris_det}
+    \caption{Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:harris_det_walking}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{walking}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame12_H.png}
+        \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{running}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame27_H.png}
+        \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{handclapping}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame42_H.png}
+        \caption{frame 42}
     \end{subfigure}
-    \caption{Harris3D: χάρτης απόκρισης $H$ (frame 25, κλίμακα \textit{hot}).}
-    \label{fig:harris_H}
+    \caption{Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \label{fig:harris_H_walking}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{walking}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame12_det.png}
+        \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{running}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame27_det.png}
+        \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame25_det.png}
-        \caption{handclapping}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame42_det.png}
+        \caption{frame 42}
     \end{subfigure}
-    \caption{Gabor: εντοπισμένα σημεία ενδιαφέροντος (frame 25).}
-    \label{fig:gabor_det}
+    \caption{Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:gabor_det_walking}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{walking}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame12_H.png}
+        \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{running}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame27_H.png}
+        \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame25_H.png}
-        \caption{handclapping}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame42_H.png}
+        \caption{frame 42}
     \end{subfigure}
-    \caption{Gabor: χάρτης ενέργειας $H$ (frame 25, κλίμακα \textit{hot}).}
-    \label{fig:gabor_H}
+    \caption{Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \label{fig:gabor_H_walking}
 \end{figure}
 
-\textbf{Σχολιασμός.}
-Ο Harris3D εντοπίζει σημεία σε περιοχές που παρουσιάζουν ταυτόχρονα
-χωρική δομή (γωνίες, άκρα) \emph{και} χρονική μεταβολή.
-Επικεντρώνεται κυρίως στα άκρα των άκρων (χέρια, πόδια) και στα σύνορα σώματος–φόντου
-όπου η τροχιά κίνησης προκαλεί αλλαγή εμφάνισης. Στη \textit{running} τα σημεία
-συγκεντρώνονται στα πόδια και τα χέρια που κινούνται γρήγορα.
+% ══ running ════════════════════════════════════════════════════════════════════
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame12_det.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame27_det.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame42_det.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:harris_det_running}
+\end{figure}
 
-Ο Gabor αντιδρά αποκλειστικά στη χρονική μεταβολή: εντοπίζει περιοχές με
-ρυθμικά επαναλαμβανόμενη κίνηση (ο ρυθμός καθορίζεται από $\omega = 4/\tau$).
-Για \textit{handclapping} φαίνεται να κατανέμεται πιο ομοιόμορφα κατά μήκος της
-περιοχής κίνησης των χεριών, αντιδρώντας στην περιοδικότητα της δράσης.
-Για \textit{walking} και \textit{running} ο Gabor εντοπίζει κυρίως τα άκρα
-λόγω της μεγαλύτερης χρονικής τους μεταβολής.
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame12_H.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame27_H.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame42_H.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \label{fig:harris_H_running}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame12_det.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame27_det.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame42_det.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Gabor - running: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:gabor_det_running}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame12_H.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame27_H.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame42_H.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \label{fig:gabor_H_running}
+\end{figure}
+
+% ══ handclapping ═══════════════════════════════════════════════════════════════
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame12_det.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame27_det.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame42_det.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:harris_det_handclapping}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame12_H.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame27_H.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame42_H.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \label{fig:harris_H_handclapping}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame12_det.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame27_det.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame42_det.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}
+    \label{fig:gabor_det_handclapping}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame12_H.png}
+        \caption{frame 12}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame27_H.png}
+        \caption{frame 27}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame42_H.png}
+        \caption{frame 42}
+    \end{subfigure}
+    \caption{Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \label{fig:gabor_H_handclapping}
+\end{figure}
+
+Παρατηρούμε ότι και οι δύο ανιχνευτές καταφέρνουν να εντοπίσουν σημεία
+ενδιαφέροντος στις περιοχές κίνησης (χέρια, πόδια). Ωστόσο, υπάρχουν
+σημαντικές διαφορές τόσο στον τύπο των σημείων που εντοπίζουν όσο και
+στην πυκνότητά τους.
+
+Ο Harris3D εντοπίζει σημεία σε περιοχές που παρουσιάζουν \emph{ταυτόχρονα}
+χωρική δομή (γωνίες, άκρα) και χρονική μεταβολή.
+Επικεντρώνεται κυρίως στα άκρα των άκρων και στα σύνορα σώματος–φόντου
+όπου η τροχιά κίνησης προκαλεί αλλαγή εμφάνισης.
+Τα σημεία που εντοπίζει τείνουν να είναι \emph{αραιά}: τόσο ο αριθμός των
+frames με ανιχνεύσεις όσο και η πυκνότητα ανά frame είναι χαμηλότερα σε σχέση
+με τον Gabor. Αυτό οφείλεται στο γεγονός ότι ο Harris3D απαιτεί και τα δύο
+κριτήρια (χωρικό \emph{και} χρονικό) να ικανοποιούνται ταυτόχρονα.
+
+Ο Gabor αντιδρά κυρίως στη χρονική μεταβολή, εντοπίζοντας περιοχές με
+ρυθμικά επαναλαμβανόμενη κίνηση (ο ρυθμός ορίζεται από $\omega = 4/\tau$).
+Είναι αισθητά πιο ευαίσθητος στις ανιχνεύσεις: σπάνια χάνει σημεία
+ενδιαφέροντος σε frame που εμφανίζεται κινούμενο αντικείμενο.
+Για \textit{handclapping} τα σημεία κατανέμονται πιο ομοιόμορφα κατά μήκος
+της περιοχής κίνησης των χεριών, αντιδρώντας στην περιοδικότητα της δράσης.
+Για \textit{walking} και \textit{running} εντοπίζει κυρίως τα άκρα λόγω της
+μεγαλύτερης χρονικής τους μεταβολής.
+
+Και οι δύο ανιχνευτές εντοπίζουν ευκολότερα έντονες κινήσεις
+(π.χ.\ κίνηση γονάτων και αστραγάλων στο \textit{running})
+από ό,τι πιο αργές (π.χ.\ βάδισμα).
+Ωστόσο, είναι ικανοί να ανιχνεύσουν και πολύ μικρές μετακινήσεις σε
+ορισμένες περιπτώσεις, όπως η ελαφρά μετακίνηση των ποδιών σε σκηνές
+με χαμηλή κινητικότητα.
 
 \subsection{Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}
 
-Για κάθε σημείο ενδιαφέροντος $(x_0, y_0, t_0, \sigma)$ εξάγονται χωρο-χρονικοί
-περιγραφητές που κωδικοποιούν τόσο τη \emph{χωρική} (HOG) όσο και τη \emph{χρονική}
-(HOF) δομή της τοπικής γειτονιάς. Η προσέγγιση αυτή ακολουθεί τους Laptev et al.~\cite{laptev2008}.
+Έχοντας εντοπίσει τα χωρο-χρονικά σημεία ενδιαφέροντος $(x_0, y_0, t_0, \sigma)$
+στην προηγούμενη ενότητα, το επόμενο βήμα είναι η \emph{εξαγωγή
+χαρακτηριστικών}, δηλαδή η μετατροπή της τοπικής γειτονιάς κάθε σημείου σε ένα
+διάνυσμα σταθερής διάστασης που περιγράφει τι συμβαίνει γύρω από το
+σημείο. Για τον σκοπό αυτό χρησιμοποιούνται δύο τοπικοί
+περιγραφητές που συμπληρώνουν ο ένας τη λειτουργία του άλλου, οι \textbf{HOG} (Histogram of Oriented Gradients) και
+\textbf{HOF} (Histogram of Optical Flow), ακολουθώντας τους
+Laptev et al.~\cite{laptev2008} που τους εισήγαγαν ως επέκταση του κλασικού
+SIFT.
+Η δύναμη της σύζευξης βρίσκεται στο γεγονός ότι ο
+HOG αποτυπώνει τη στιγμιαία \emph{εμφάνιση} (στάση σώματος, περίγραμμα
+μελών), ενώ ο HOF την \emph{κίνηση} (κατεύθυνση και ένταση μετατοπίσεων).
+
+Ο \textbf{HOG} (Histogram of Oriented Gradients), όπως είδαμε και στο
+προηγούμενο εργαστήριο, κωδικοποιεί τη χωρική δομή (ακμές, περιγράμματα,
+υφές) μέσω του gradient της έντασης: για κάθε pixel υπολογίζει τις
+μερικές παραγώγους $G_x, G_y$, εξάγει γωνία και μέτρο, και φτιάχνει
+ιστόγραμμα των γωνιών σταθμισμένο με το μέτρο. Αποτυπώνει έτσι τη
+\emph{στιγμιαία γεωμετρία} του σώματος (στάση κορμού, θέση χεριών και
+ποδιών, σιλουέτα), που συχνά αρκεί από μόνη της για να ξεχωρίσει
+δράσεις όπως \textit{handclapping} με ανυψωμένα χέρια έναντι
+\textit{walking} με χέρια στα πλάγια.
+
+Ο \textbf{HOF} (Histogram of Optical Flow) κωδικοποιεί αντί για γεωμετρία
+την \emph{κίνηση} γύρω από το σημείο. Για κάθε ζεύγος διαδοχικών frames
+υπολογίζεται πεδίο οπτικής ροής $(f_x, f_y)$ που εκτιμά πόσο και προς
+ποια κατεύθυνση μετακινήθηκε κάθε pixel, και στη συνέχεια κατασκευάζεται
+ιστόγραμμα των κατευθύνσεων σταθμισμένο με το μέτρο της ροής (ώστε
+ασθενείς, θορυβώδεις μετατοπίσεις να μη κυριαρχούν). Το ιστόγραμμα αυτό
+απομονώνει την κίνηση από την εμφάνιση και είναι ιδιαίτερα διακριτικό
+για περιοδικές δράσεις όπως \textit{walking} ή \textit{running}, όπου
+διαφορετικές φάσεις του κύκλου παράγουν χαρακτηριστικές κατανομές ροής.
+
+Σημειώνουμε ότι στο paper των Laptev et al.\ ο τοπικός όγκος έχει
+διαστάσεις $\Delta x, \Delta y = 2k\sigma$, $\Delta t = 2k\tau$ με $k{=}9$,
+και υποδιαιρείται σε πλέγμα $(n_x, n_y, n_t) = (3, 3, 2)$ cuboids. Στη
+δική μας υλοποίηση αποκλίνουμε συνειδητά από αυτές τις τιμές: ο όγκος
+γίνεται \emph{χωρικός} ($n_t{=}1$) με πλέγμα $3\times3$ και πλευρά
+$4\sigma$ (δηλαδή $k{=}2$), ώστε ο περιγραφητής να παραμένει συμπαγής
+$144$-d (αντί να κλιμακωθεί σε $432$-d από τα $2\!\times\!3\!\times\!3$
+cuboids του paper) και να κρατήσουμε χαμηλό το υπολογιστικό κόστος σε
+ολόκληρο το pipeline — οι δοκιμές μας έδειξαν ότι η μείωση του patch
+δεν βλάπτει σημαντικά την τελική ακρίβεια.
 
 \subsubsection{Υπολογισμός Gradient και Οπτικής Ροής}
 
-\textbf{Χωρική βαθμίδα (για HOG).}
-Για κάθε frame $t$ υπολογίζονται οι οριζόντιες και κατακόρυφες συνιστώσες της
+Όσον αφορά τον υπολογισμό των περιγραφητών \textbf{HOG} για κάθε frame $t$ υπολογίζονται οι οριζόντιες και κατακόρυφες συνιστώσες της
 βαθμίδας έντασης μέσω κεντρικών διαφορών:
 \begin{equation}
     G_x = I \ast [-1,\;0,\;1], \qquad G_y = I \ast [-1,\;0,\;1]^\top
@@ -419,93 +667,153 @@ $\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, $N{=}500$.
 Η χρήση κεντρικών διαφορών (αντί Sobel) είναι συμβατή με τον τρόπο που
 υπολογίστηκαν οι παράγωγοι στους ανιχνευτές, εξασφαλίζοντας συνέπεια κλίμακας.
 
-\textbf{Οπτική ροή (για HOF).}
-Για κάθε ζεύγος διαδοχικών frames $(t, t{+}1)$ υπολογίζεται πεδίο οπτικής ροής
-$(f_x, f_y)$ μέσω του αλγορίθμου \textbf{TV-L1} (Dual TV-L1,
-\texttt{cv2.optflow.DualTVL1OpticalFlow\_create}). Το TV-L1 παράγει πυκνή ροή
+Από την άλλη όσον αφορά τον υπολογισμό των περιγραφητών \textbf{HOF}, για κάθε ζεύγος διαδοχικών frames $(t, t{+}1)$ υπολογίζεται πεδίο οπτικής ροής
+$(f_x, f_y)$ μέσω του αλγορίθμου \textbf{TV-L1}. Το TV-L1 παράγει πυκνή ροή
 με ισχυρή αντοχή σε θόρυβο και στα άλματα έντασης χάρη στον όρο ολικής
-μεταβολής, και αποτελεί την προτεινόμενη μέθοδο των Laptev et al.~\cite{laptev2008}.
+μεταβολής. Χρησιμοποιήθηκε η υλοποίηση του OpenCV μέσω της \texttt{cv2.optflow.DualTVL1OpticalFlow\_create(nscales=1)} που υπολογίζει τη ροή σε μία μόνο κλίμακα, αποφεύγοντας την πυραμίδα που θα αύξανε σημαντικά τον υπολογιστικό φόρτο.
 
 \subsubsection{Εξαγωγή HOG/HOF Περιγραφητών}
 
-Για κάθε σημείο $(x_0, y_0, t_0, \sigma)$ ορίζεται ένα τετράγωνο patch
-$[y_0 \pm 2\sigma]\times[x_0 \pm 2\sigma]$, δηλαδή πλευράς $4\sigma$ pixels.
-Στο patch αυτό εφαρμόζεται η συνάρτηση \texttt{orientation\_histogram}
-που υπολογίζει ιστόγραμμα προσανατολισμού/μεγέθους σε πλέγμα κελιών.
+Αφού έχουν προϋπολογιστεί τα πεδία $G_x$, $G_y$ και η οπτική ροή
+$(f_x, f_y)$ για όλα τα frames του βίντεο, η εξαγωγή των περιγραφητών
+γίνεται \emph{ανά σημείο ενδιαφέροντος}. Για κάθε σημείο
+$(x_0, y_0, t_0, \sigma)$ που επιστράφηκε από τον ανιχνευτή, ορίζεται ένα
+τετράγωνο χωρικό παράθυρο (\emph{patch}) πλευράς $4\sigma$ pixels γύρω από
+τη θέση του, δηλαδή
+$[y_0 - 2\sigma,\, y_0 + 2\sigma] \times [x_0 - 2\sigma,\, x_0 + 2\sigma]$,
+πάνω στο frame $t_0$. Η σύνδεση του μεγέθους του patch με την κλίμακα
+$\sigma$ του ανιχνευτή εξασφαλίζει ότι ο περιγραφητής αποτυπώνει την
+τοπική δομή στην \emph{ίδια κλίμακα} στην οποία εντοπίστηκε το σημείο.
+Το patch αποκόπτεται στα όρια της εικόνας για να αποφευχθεί έξοδος εκτός
+ορίων, και εκφυλισμένα patches (διαστάσεων μικρότερων των $2$ pixels) που
+μπορεί να προκύψουν για σημεία πολύ κοντά στο περιθώριο παραλείπονται από την υλοποίηση μας.
 
-\begin{itemize}
-    \item \textbf{Παράμετροι}: $3\times3$ πλέγμα κελιών, 8 bins γωνίας (unsigned,
-          $[0°, 180°)$) $\Rightarrow$ $3\times3\times8 = 72$ διαστάσεις ανά
-          περιγραφητή.
-    \item \textbf{HOG}: ιστόγραμμα από $(G_x, G_y)$ του frame $t_0$ $\rightarrow$
-          $72$-διάστατο διάνυσμα.
-    \item \textbf{HOF}: ιστόγραμμα από $(f_x, f_y)$ του frame $t_0$
-          $\rightarrow$ $72$-διάστατο διάνυσμα. Για το τελευταίο frame
-          (χωρίς εμπρόσθια ροή) χρησιμοποιείται μηδενικό πεδίο ροής.
-    \item \textbf{Τελικός περιγραφητής}: $[\text{HOG}\,\|\,\text{HOF}]$,
-          $144$ διαστάσεων ανά σημείο ενδιαφέροντος.
-\end{itemize}
+Πάνω σε κάθε τέτοιο patch εφαρμόζεται η έτοιμη συνάρτηση
+\texttt{orientation\_histogram} του δοσμένου υλικού, η οποία είναι
+γενική και δέχεται οποιοδήποτε διανυσματικό πεδίο $(u, v)$ πάνω στο
+patch· ανάλογα με το τι της τροφοδοτούμε, παράγεται είτε HOG είτε HOF.
+Εσωτερικά, η συνάρτηση υποδιαιρεί το patch σε πλέγμα $3\times 3$ κελιών
+και σε κάθε κελί φτιάχνει ιστόγραμμα $8$ bins με βάση τη γωνία του
+$(u, v)$ κάθε pixel, σταθμισμένο με το μέτρο του $\sqrt{u^2+v^2}$
+— έτσι ώστε ισχυρά διανύσματα (έντονες ακμές ή γρήγορη κίνηση) να
+μετρούν περισσότερο από θορυβώδη. Τα εννέα $8$-d ιστογράμματα
+συνενώνονται σε ένα $3\!\times\!3\!\times\!8 = 72$-διάστατο υπο-διάνυσμα.
 
-Κάθε βίντεο αναπαρίσταται τελικά ως σύνολο $N$ διανυσμάτων $144$-d, ένα ανά
-εντοπισμένο χωρο-χρονικό σημείο.
+Η υλοποίηση μας καλεί τη συνάρτηση δύο φορές ανά σημείο, πάνω στο ίδιο
+patch. Για τον \textbf{HOG} τροφοδοτούνται οι χωρικές βαθμίδες
+$(G_x, G_y)$ του frame $t_0$, οπότε το ιστόγραμμα αποτυπώνει τις
+κατευθύνσεις των τοπικών ακμών, δηλαδή τη γεωμετρική δομή (περιγράμματα
+μελών, στάση σώματος). Για τον \textbf{HOF} τροφοδοτούνται οι
+συνιστώσες της οπτικής ροής $(f_x, f_y)$ μεταξύ των frames $t_0$ και
+$t_0{+}1$, οπότε τώρα το ιστόγραμμα αποτυπώνει τις κατευθύνσεις και τις
+εντάσεις της τοπικής κίνησης. Αν το σημείο ενδιαφέροντος εντοπιστεί
+στο τελευταίο frame όπου δεν υπάρχει εμπρόσθια ροή, χρησιμοποιείται
+μηδενικό πεδίο.
 
-\subsection{Κατασκευή Bag of Visual Words και Ταξινόμηση Δράσεων με SVM}
+Τα δύο $72$-d υπο-διανύσματα συνενώνονται σε έναν ενιαίο περιγραφητή
+$144$ διαστάσεων $[\text{HOG}\,\|\,\text{HOF}]$, με τις πρώτες $72$
+θέσεις να αντιστοιχούν στην εμφάνιση και τις υπόλοιπες $72$ στην
+κίνηση. Η διάταξη αυτή επιλέχθηκε συνειδητά ώστε στην Εν.~2.3 να
+μπορούμε να αξιολογήσουμε ξεχωριστά κάθε υπο-περιγραφητή κρατώντας
+απλώς τις πρώτες ή τις τελευταίες $72$ στήλες του πίνακα περιγραφητών.
 
-\subsubsection{Διαχωρισμός Train/Test}
+\subsection{Κατασκευή Bag of Visual Words και Ταξινόμηση με SVM}
 
-Ο διαχωρισμός των βίντεο σε σύνολα εκπαίδευσης και ελέγχου γίνεται βάσει
-προκαθορισμένου αρχείου \texttt{traininng\_videos.txt}. Συνολικά χρησιμοποιούνται
-48 βίντεο από 3 κλάσεις:
-\begin{itemize}
-    \item \textbf{Εκπαίδευση}: 36 βίντεο (12 ανά κλάση)
-    \item \textbf{Έλεγχος}: 12 βίντεο (4 ανά κλάση)
-\end{itemize}
-Για κάθε βίντεο φορτώνονται έως 100 frames.
+Έχοντας πλέον για κάθε βίντεο ένα σύνολο $144$-διάστατων περιγραφητών,
+το επόμενο βήμα είναι η ταξινόμησή του σε μία από τις τρεις δράσεις. Το
+πλήθος των περιγραφητών διαφέρει από βίντεο σε βίντεο, οπότε πρέπει
+πρώτα να μετατραπούν σε αναπαράσταση σταθερής διάστασης.
 
-\subsubsection{Bag of Visual Words}
+Για τον σκοπό αυτό χρησιμοποιούμε την προσέγγιση \textbf{Bag of Visual
+Words (BoVW)}. Με K-means πάνω στους περιγραφητές εκπαίδευσης χτίζουμε
+ένα λεξιλόγιο $K$ \emph{visual words} (κεντροειδών), και στη συνέχεια
+κάθε βίντεο κωδικοποιείται σε ένα κανονικοποιημένο ιστόγραμμα που μετράει
+πόσες φορές εμφανίζεται η κάθε οπτική λέξη στους περιγραφητές του.
 
-Η αναπαράσταση Bag of Visual Words (BoVW) μετατρέπει το μεταβλητού πλήθους
-σύνολο τοπικών περιγραφητών κάθε βίντεο σε ένα διάνυσμα σταθερής διάστασης.
-Η διαδικασία:
+Με αυτό το ιστόγραμμα ως είσοδο, εκπαιδεύουμε έναν $\chi^2$-SVM
+ταξινομητή μέσω της έτοιμης συνάρτησης \texttt{svm\_train\_test} του
+\texttt{cv26\_lab2\_utils.py}.
 
-\begin{enumerate}
-    \item \textbf{Κατασκευή λεξιλογίου}: εφαρμογή K-means σε τυχαίο δείγμα
-          50\% των περιγραφητών εκπαίδευσης (με σταθερό seed = 42 για
-          αναπαραγωγιμότητα). Παράγονται $K$ κεντροειδή (``οπτικές λέξεις'').
-    \item \textbf{Κωδικοποίηση}: για κάθε βίντεο, κάθε περιγραφητής ανατίθεται
-          στο πλησιέστερο κεντροειδές (nearest-neighbour assignment).
-    \item \textbf{Ιστόγραμμα}: το βίντεο αναπαρίσταται από κανονικοποιημένο
-          ($\ell_2$) ιστόγραμμα συχνοτήτων $K$ bins.
-\end{enumerate}
+\subsubsection{Διαχωρισμός Συνόλου Δεδομένων}
 
-Η παράμετρος $K$ (μέγεθος λεξιλογίου) αποτελεί κρίσιμη υπερπαράμετρο:
-μικρό $K$ οδηγεί σε χονδροειδή κωδικοποίηση, ενώ πολύ μεγάλο $K$ μπορεί να
-υπερεξειδικεύσει. Οι Laptev et al.~\cite{laptev2008} χρησιμοποιούν $K{=}4000$
-σε πολύ μεγαλύτερο dataset· στα δικά μας πειράματα δοκιμάζονται $K \in \{50, 100, 200\}$.
+Ο διαχωρισμός των βίντεο σε σύνολα εκπαίδευσης και ελέγχου ορίζεται από
+το αρχείο \texttt{traininng\_videos.txt} που συνοδεύει το dataset.
+Διαβάζουμε τα ονόματα που περιέχει, συλλέγουμε όλα τα \texttt{.avi} από
+τους φακέλους των τριών δράσεων (\textit{walking}, \textit{running},
+\textit{handclapping}), και χωρίζουμε σε $36$ βίντεο εκπαίδευσης και $12$
+βίντεο ελέγχου ανάλογα με το αν το όνομα κάθε αρχείου περιλαμβάνεται ή
+όχι στη λίστα. Από κάθε βίντεο φορτώνουμε τα πρώτα $100$ καρέ σε
+αποχρώσεις του γκρι, μέσω της συνάρτησης \texttt{read\_video}.
+
+\subsubsection{Κατασκευή Λεξιλογίου visual words}
+
+Για την κωδικοποίηση κάθε βίντεο σε ένα ιστόγραμμα visual words
+χρησιμοποιούμε τη συνάρτηση \texttt{bag\_of\_words} του
+\texttt{cv26\_lab2\_utils.py}. Η κλήση γίνεται ως
+\texttt{bow\_tr, bow\_ts = bag\_of\_words(tr, ts, num\_centers=K)}, όπου
+\texttt{tr} και \texttt{ts} είναι λίστες μήκους ίσου με τον αριθμό των
+train και test βίντεο αντίστοιχα, και κάθε στοιχείο τους είναι ένας
+δισδιάστατος πίνακας με έναν περιγραφητή ανά γραμμή. Η παράμετρος
+\texttt{num\_centers} ορίζει το πλήθος $K$ των κεντροειδών του K-means,
+δηλαδή το μέγεθος του λεξιλογίου. Εσωτερικά η συνάρτηση τρέχει K-means
+μόνο στους περιγραφητές εκπαίδευσης (χρησιμοποιώντας τυχαίο δείγμα $50\%$
+για ταχύτητα) και μετά κβαντίζει κάθε περιγραφητή κάθε βίντεο στο
+πλησιέστερο κεντροειδές, επιστρέφοντας $\ell_2$-κανονικοποιημένα
+ιστογράμματα συχνοτήτων.
+
+Στη δική μας υλοποίηση καλούμε την \texttt{bag\_of\_words} μέσα σε έναν
+βρόχο που διατρέχει διαφορετικούς συνδυασμούς ανιχνευτή (Harris, Gabor,
+ή το union των δύο), τύπου περιγραφητή (HOG, HOF, ή HOG/HOF) και
+μεγέθους λεξιλογίου. Για τα πειράματα που χρησιμοποιούν μόνο έναν
+υπο-περιγραφητή, αρκεί να κρατήσουμε τις πρώτες ή τις τελευταίες $72$
+στήλες κάθε πίνακα περιγραφητών (\texttt{d[:, :72]} για HOG,
+\texttt{d[:, 72:]} για HOF) πριν την κλήση, αξιοποιώντας τη διάταξη
+$[\text{HOG}\,\|\,\text{HOF}]$ που επιβάλαμε στο 2.2.2. Ως μέγεθος
+λεξιλογίου δοκιμάζουμε στα τελικά μας πειράματα $K \in \{50, 100, 200\}$, ώστε να αξιολογήσουμε
+την επίδραση της χωρητικότητας του λεξιλογίου στην τελική ακρίβεια.
 
 \subsubsection{Ταξινόμηση με SVM}
 
-Για την ταξινόμηση χρησιμοποιείται \textbf{Support Vector Machine (SVM)} με
-πυρήνα $\chi^2$ και στρατηγική One-vs-Rest για πολυκλασική ταξινόμηση.
+Αφού έχουμε για κάθε βίντεο ένα $K$-διάστατο ιστόγραμμα BoVW, το
+ταξινομούμε σε μία από τις τρεις δράσεις μέσω της έτοιμης συνάρτησης
+\texttt{svm\_train\_test(bow\_tr, train\_labels, bow\_ts, test\_labels)}
+του \texttt{cv26\_lab2\_utils.py}. Η συνάρτηση επιστρέφει την ακρίβεια
+στο test set και τις προβλέψεις ανά βίντεο.
 
-Ο πυρήνας $\chi^2$ ορίζεται ως:
+Εσωτερικά η \texttt{svm\_train\_test} χρησιμοποιεί έναν SVM με πυρήνα
+$\chi^2$, ο οποίος είναι καταλληλότερος για ιστογράμματα από τον απλό
+γραμμικό ή τον RBF. Ο πυρήνας έχει τη μορφή
 \begin{equation}
     K_{\chi^2}(\mathbf{x}, \mathbf{y}) =
-    \exp\!\left(-\gamma \sum_i \frac{(x_i - y_i)^2}{x_i + y_i}\right)
+    \exp\!\left(-\gamma \sum_i \frac{(x_i - y_i)^2}{x_i + y_i}\right),
 \end{equation}
-και είναι ιδιαίτερα κατάλληλος για ιστογράμματα, αφού λαμβάνει υπόψη τη
-σχετική κατανομή συχνοτήτων αντί για τις ευκλείδειες αποστάσεις.
-Οι Laptev et al.~\cite{laptev2008} αναφέρουν ότι ο $\chi^2$ πυρήνας υπερτερεί
-σαφώς του γραμμικού για BoF αναπαραστάσεις.
-Χρησιμοποιείται κόστος $C = 1$ και ο πυρήνας υπολογίζεται εκ των προτέρων
-(precomputed) και κανονικοποιείται ως προς τη μέση τιμή του.
+όπου ο παρονομαστής $x_i + y_i$ δίνει μεγαλύτερη βαρύτητα σε bins με
+μικρές τιμές, αποτρέποντας τις λίγες κυρίαρχες οπτικές λέξεις να
+επιβληθούν στη μέτρηση ομοιότητας — κάτι που θα συνέβαινε με την απλή
+ευκλείδεια απόσταση. Πρακτικά ο πίνακας του πυρήνα υπολογίζεται εκ των
+προτέρων (\texttt{precomputed}) και κανονικοποιείται διαιρούμενος με τη
+μέση τιμή του, ώστε η κλίμακα των αποστάσεων να μην εξαρτάται από το
+μέγεθος του λεξιλογίου.
+
+Επειδή οι δράσεις είναι τρεις και το SVM είναι εκ φύσεως δυαδικός
+ταξινομητής, η \texttt{svm\_train\_test} εκπαιδεύει εσωτερικά τρία
+ανεξάρτητα SVMs με στρατηγική \emph{One-vs-Rest}: το καθένα μαθαίνει να
+διακρίνει μία κλάση από τις υπόλοιπες δύο. Για κάθε test βίντεο
+επιλέγεται η κλάση με τη μεγαλύτερη πιθανότητα (μέσω Platt scaling), και
+η τελική ακρίβεια υπολογίζεται ως το ποσοστό σωστών προβλέψεων στα $12$
+test βίντεο.
 
 \subsubsection{Πειραματισμοί και Σχολιασμός}
 
-Πραγματοποιήθηκαν 26 πειράματα, διερευνώντας τις επιπτώσεις του τύπου
-ανιχνευτή, του τύπου περιγραφητή, και των κύριων υπερπαραμέτρων ($\sigma$,
-$\tau$, $\theta$, $N$, $K$). Τα αποτελέσματα συνοψίζονται στον
-Πίνακα~\ref{tab:results}.
+Τρέξαμε συνολικά $27$ πειράματα ώστε να δούμε πώς επηρεάζουν την τελική
+ακρίβεια οι επιλογές ανιχνευτή (Harris3D, Gabor ή η ένωσή τους), τύπου
+περιγραφητή (HOG, HOF ή HOG+HOF) και οι υπερπαράμετροι $\sigma$, $\tau$,
+$\theta$, $N$ και $K$. Στα πειράματα με την ένωση ανιχνευτών συνενώνουμε
+απλά τους περιγραφητές Harris και Gabor κάθε βίντεο πριν το BoVW. Για
+τις παραλλαγές HOG / HOF αξιοποιούμε τη διάταξη $[\text{HOG}\|\text{HOF}]$
+του $144$-d διανύσματος και κρατάμε τις πρώτες ή τις τελευταίες $72$
+στήλες, χωρίς να ξαναϋπολογίζουμε περιγραφητές. Τα αποτελέσματα όλων των
+πειραμάτων συνοψίζονται στον Πίνακα~\ref{tab:results}.
 
 \begin{table}[H]
 \centering
@@ -518,113 +826,121 @@ $\tau$, $\theta$, $N$, $K$). Τα αποτελέσματα συνοψίζοντ�
 \textbf{Ανιχνευτής} & \textbf{Περιγρ.} & $\boldsymbol{\sigma}$ & $\boldsymbol{\tau}$ & $\boldsymbol{\theta}$ & $\boldsymbol{N}$ & $\boldsymbol{K}$ & \textbf{Ακρίβεια} \\
 \midrule
 \multicolumn{8}{l}{\textit{Βασικά πειράματα (detector \& descriptor type)}} \\
-harris      & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 83.33\% \\
-gabor       & HOG     & 2 & 1.5 & 0.1  & 500  & 50  & 83.33\% \\
-gabor       & HOF     & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
-harris      & HOG     & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
-harris      & HOF     & 2 & 1.5 & 0.1  & 500  & 50  & 66.67\% \\
-harris+gabor& HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 83.33\% \\
+harris       & HOG+HOF & 1 & 0.7 & 0.1  & 500  & 50  & 50.00\% \\
+harris       & HOG     & 1 & 0.7 & 0.1  & 500  & 50  & 58.33\% \\
+harris       & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
+gabor        & HOG     & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
+gabor        & HOF     & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
+harris       & HOG     & 2 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
+harris       & HOF     & 2 & 1.5 & 0.1  & 500  & 50  & 83.33\% \\
+harris+gabor & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 50  & 83.33\% \\
 \midrule
 \multicolumn{8}{l}{\textit{Μέγεθος λεξιλογίου $K$ (gabor baseline)}} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 100 & \textbf{91.67\%} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 200 & 83.33\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 100 & \textbf{91.67\%} \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 500  & 200 & 75.00\% \\
 \midrule
-\multicolumn{8}{l}{\textit{Χωρική κλίμακα $\sigma$ (gabor)}} \\
-gabor       & HOG+HOF & 3 & 1.5 & 0.1  & 500  & 50  & 75.00\% \\
-gabor       & HOG+HOF & 4 & 1.5 & 0.1  & 500  & 50  & 66.67\% \\
+\multicolumn{8}{l}{\textit{Χωρική κλίμακα $\sigma$}} \\
+gabor        & HOG+HOF & 3 & 1.5 & 0.1  & 500  & 50  & 66.67\% \\
+gabor        & HOG+HOF & 4 & 1.5 & 0.1  & 500  & 50  & 66.67\% \\
+harris       & HOG+HOF & 4 & 1.5 & 0.1  & 500  & 50  & 41.67\% \\
 \midrule
-\multicolumn{8}{l}{\textit{Χρονική κλίμακα $\tau$ (gabor)}} \\
-gabor       & HOG+HOF & 2 & 1.0 & 0.1  & 500  & 50  & 50.00\% \\
-gabor       & HOG+HOF & 2 & 2.0 & 0.1  & 500  & 50  & 75.00\% \\
+\multicolumn{8}{l}{\textit{Χρονική κλίμακα $\tau$}} \\
+harris       & HOG+HOF & 2 & 1.0 & 0.1  & 500  & 50  & 33.33\% \\
+gabor        & HOG+HOF & 2 & 1.0 & 0.1  & 500  & 50  & 41.67\% \\
+gabor        & HOG+HOF & 2 & 2.0 & 0.1  & 500  & 50  & 33.33\% \\
 \midrule
-\multicolumn{8}{l}{\textit{Κατώφλι $\theta$ (gabor)}} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.05 & 500  & 50  & \textbf{91.67\%} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.2  & 500  & 50  & 75.00\% \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.3  & 500  & 50  & 66.67\% \\
-harris      & HOG+HOF & 2 & 1.5 & 0.05 & 500  & 50  & 66.67\% \\
+\multicolumn{8}{l}{\textit{Κατώφλι $\theta$}} \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.05 & 500  & 50  & 83.33\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.2  & 500  & 50  & 75.00\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.3  & 500  & 50  & 66.67\% \\
+harris       & HOG+HOF & 2 & 1.5 & 0.05 & 500  & 50  & 83.33\% \\
 \midrule
-\multicolumn{8}{l}{\textit{Πλήθος σημείων $N$ (gabor)}} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 200  & 50  & 75.00\% \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 50  & 83.33\% \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 2000 & 50  & 75.00\% \\
-\midrule
-\multicolumn{8}{l}{\textit{Follow-up για $N{=}1000$ (gabor)}} \\
-gabor       & HOG     & 2 & 1.5 & 0.1  & 1000 & 50  & 75.00\% \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 100 & \textbf{91.67\%} \\
-gabor       & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 200 & \textbf{91.67\%} \\
-\midrule
-\multicolumn{8}{l}{\textit{Παράμετροι Harris (χρονική κλίμακα \& paper reference)}} \\
-harris      & HOG+HOF & 2 & 1.0 & 0.1  & 500  & 50  & 66.67\% \\
-harris      & HOG+HOF & 1 & 0.7 & 0.1  & 500  & 50  & 58.33\% \\
-harris      & HOG     & 1 & 0.7 & 0.1  & 500  & 50  & 66.67\% \\
+\multicolumn{8}{l}{\textit{Πλήθος σημείων $N$ και εναλλαγή $Κ$ (gabor)}} \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 200  & 50  & 66.67\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 50  & \textbf{91.67\%} \\
+gabor        & HOG     & 2 & 1.5 & 0.1  & 1000 & 50  & 83.33\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 100 & 83.33\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 1000 & 200 & 66.67\% \\
+gabor        & HOG+HOF & 2 & 1.5 & 0.1  & 2000 & 50  & 75.00\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Βασικά ευρήματα.}
+Στο baseline ($\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, $N{=}500$,
+$K{=}50$) οι δύο ανιχνευτές πετυχαίνουν την ίδια ακρίβεια $75\%$, ενώ
+η ένωσή τους (\texttt{harris+gabor}) ανεβαίνει στο $83.33\%$. Το
+πλεονέκτημα του Gabor εμφανίζεται μόνο όταν ρυθμίσουμε το λεξιλόγιο ή
+την πυκνότητα σημείων: με $K{=}100$ (ή εναλλακτικά με $N{=}1000$
+διατηρώντας $K{=}50$) φτάνει στο $91.67\%$, τη μέγιστη ακρίβεια όλων των
+πειραμάτων μας. Ενδιαφέρον εύρημα είναι ότι για τον Harris ο
+περιγραφητής HOF μόνος του ($83.33\%$) υπερτερεί του συνδυασμένου
+HOG+HOF ($75\%$), πιθανώς επειδή η χρονική πληροφορία βοηθάει τον
+Harris να αντισταθμίσει τη χωρική του ευαισθησία.
 
-\textbf{1. Gabor vs Harris3D.}
-Ο Gabor ανιχνευτής ($83.33\%$ baseline) υπερτερεί σαφώς του Harris3D
-($75.00\%$) για τις δράσεις του KTH. Αυτό εξηγείται από τον χαρακτήρα των
-δράσεων: \textit{walking}, \textit{running} και \textit{handclapping} έχουν
-κυρίαρχη \emph{χρονική} περιοδικότητα, την οποία ανιχνεύει άριστα ο
-Gabor. Ο Harris3D απαιτεί ταυτόχρονη χωρική και χρονική μεταβολή, με
-αποτέλεσμα να χάνει σημεία όταν η κίνηση γίνεται σε ομοιόμορφες περιοχές.
-Η συνδυαστική χρήση (harris+gabor) δεν υπερτερεί του gabor μόνου, γεγονός
-που υποδηλώνει ότι τα harris σημεία δεν προσθέτουν χρήσιμη πληροφορία
-σε αυτό το dataset.
+Όσον αφορά τους υπο-περιγραφητές για τον Gabor, και οι τρεις
+παραλλαγές (HOG, HOF, HOG+HOF) δίνουν στο baseline $75\%$· διαφορά
+υπέρ του HOG+HOF εμφανίζεται όταν αυξάνουμε την πυκνότητα σημείων:
+για $N{=}1000, K{=}50$ ο συνδυασμένος HOG+HOF φτάνει $91.67\%$ ενώ ο
+HOG μόνο $83.33\%$. Αυτό υποδεικνύει ότι εμφάνιση και κίνηση είναι
+\emph{συμπληρωματικές} ειδικά για τον Gabor detector, όταν υπάρχουν
+αρκετά σημεία ώστε τα μοτίβα στάσης και κίνησης να κωδικοποιηθούν
+ξεχωριστά.
 
-\textbf{2. HOG vs HOF vs HOG+HOF.}
-Για τον gabor ανιχνευτή, το HOG από μόνο του ($83.33\%$) αποδίδει εξίσου
-με το HOG+HOF ($83.33\%$, $K{=}50$), ενώ το HOF υπολείπεται ($75.00\%$).
-Αυτό συμφωνεί με το εύρημα των Laptev et al.~\cite{laptev2008} ότι
-``για δράσεις KTH, το HOG αποδίδει καλύτερα από το HOF'', λόγω των
-σαφών χωρικών μοτίβων κίνησης. Ωστόσο, για μεγαλύτερο $K$ (=100) το
-συνδυασμένο HOG+HOF φτάνει $91.67\%$, δείχνοντας ότι η ροή συνεισφέρει
-συμπληρωματικά όταν το λεξιλόγιο είναι αρκετά εκφραστικό.
+Όσον αφορά το μέγεθος του λεξιλογίου $K$: για $N{=}500$, το $K{=}50$ δίνει $75\%$, το $K{=}100$ πηδά στο
+$91.67\%$, και το $K{=}200$ επιστρέφει στο $75\%$. Το $K{=}50$ φαίνεται
+να συγχωνεύει διαφορετικά κινητικά μοτίβα στα ίδια bins, ενώ το
+$K{=}200$ υπερ-εξειδικεύεται και παράγει πολύ αραιά ιστογράμματα. Όταν
+αυξάνεται το $N$ στα $1000$ η συμπεριφορά αντιστρέφεται: τώρα το
+$K{=}50$ είναι το βέλτιστο ($91.67\%$) και η αύξηση του $K$ οδηγεί σε
+πτώση ($83.33\%$ για $K{=}100$, $66.67\%$ για $K{=}200$) — με
+περισσότερα σημεία ανά βίντεο, ένα μικρό λεξιλόγιο είναι ήδη στατιστικά
+επαρκές.
 
-\textbf{3. Μέγεθος λεξιλογίου $K$.}
-Το $K{=}100$ φαίνεται βέλτιστο για τα δεδομένα μας ($91.67\%$, gabor
-$N{=}500$). Το $K{=}50$ υποεκτιμά την ποικιλία των περιγραφητών, ενώ
-το $K{=}200$ τείνει να υπερεξειδικεύει (πτώση στο $83.33\%$ για $N{=}500$,
-αν και παραμένει στο $91.67\%$ για $N{=}1000$). Συγκριτικά, οι Laptev et al.
-χρησιμοποιούν $K{=}4000$ σε σύνολα δεδομένων χιλιάδων βίντεο· το μικρό
-μας $K$ είναι αναμενόμενα αρκετό για 48 βίντεο.
+Η χρονική κλίμακα $\tau$ είναι η πιο ευαίσθητη παράμετρος. Το
+$\tau{=}1.0$ ρίχνει την ακρίβεια στο $41.67\%$ και το $\tau{=}2.0$ στο
+$33.33\%$, πολύ κάτω από το $75\%$ του $\tau{=}1.5$. Στενό χρονικό
+παράθυρο δεν προλαβαίνει να «δει» την περιοδικότητα των δράσεων, ενώ
+πολύ φαρδύ παίρνει μέσο όρο πολλών φάσεων και χάνει τη χρονική δομή. Η
+$\tau{=}1.5$ επιβεβαιώνεται πειραματικά ως η σωστή χρονική κλίμακα για
+τις δράσεις του KTH.
 
-\textbf{4. Χρονική κλίμακα $\tau$.}
-Η τιμή $\tau{=}1.0$ οδηγεί σε δραματική πτώση ($50.00\%$), γιατί το
-χρονικό παράθυρο του Gabor γίνεται πολύ στενό για να «δει'' τη
-χαρακτηριστική χρονική κλίμακα των δράσεων. Η $\tau{=}2.0$ δίνει $75.00\%$,
-ελαφρώς χαμηλότερα από $\tau{=}1.5$ ($83.33\%$). Η $\tau$ είναι η
-κρισιμότερη παράμετρος για τον Gabor.
+Η χωρική κλίμακα $\sigma$ είναι πιο ήπια αλλά παρόμοια στη συμπεριφορά:
+η τιμή $\sigma{=}2$ είναι βέλτιστη, ενώ για $\sigma{=}3$ και $\sigma{=}4$
+ο Gabor πέφτει στο $66.67\%$. Ο Harris είναι ακόμα πιο ευαίσθητος στο
+$\sigma$: στο $\sigma{=}4$ καταρρέει στο $41.67\%$, υποδεικνύοντας ότι
+το υπερβολικό smoothing καταστρέφει τις χωρο-χρονικές γωνιακότητες που
+αναζητά.
 
-\textbf{5. Χωρική κλίμακα $\sigma$.}
-Αύξηση του $\sigma$ πέρα από $2$ μειώνει την ακρίβεια ($75\%$ για $\sigma{=}3$,
-$66.67\%$ για $\sigma{=}4$), καθώς το patch ανίχνευσης μεγαλώνει και χάνονται
-λεπτομέρειες κίνησης. Η $\sigma{=}2$ προσφέρει ικανή χωρική λεπτομέρεια
-χωρίς υπερβολική ομαλοποίηση.
+Το κατώφλι $\theta$ παρουσιάζει μονότονη συμπεριφορά: μικρότερο
+κατώφλι σημαίνει περισσότερα (και πιο φτωχά) σημεία, μεγαλύτερο σημαίνει
+λιγότερα και πιο ισχυρά. Το $\theta{=}0.05$ δίνει $83.33\%$ τόσο για τον
+Gabor όσο και για τον Harris — για τον Harris μάλιστα αυτή είναι η
+καλύτερη ρύθμιση όταν χρησιμοποιείται HOG+HOF. Αυξάνοντας το $\theta$ η
+ακρίβεια πέφτει ομαλά ($75\%$ στο $0.2$, $66.67\%$ στο $0.3$).
 
-\textbf{6. Πλήθος σημείων $N$.}
-Η αύξηση του $N$ από 200 σε 1000 βελτιώνει την ακρίβεια ($75\% \to 83.33\%$),
-αλλά η περαιτέρω αύξηση στο 2000 την μειώνει ελαφρώς ($75\%$), πιθανότατα
-λόγω εισαγωγής θορυβωδών σημείων σε αδιάφορες περιοχές. Το $N{=}1000$
-με $K{=}100$ επιτυγχάνει $91.67\%$.
+Το πλήθος σημείων $N$ ακολουθεί επίσης καμπύλη με κορυφή: $N{=}200$
+δίνει $66.67\%$, $N{=}500$ δίνει $75\%$, $N{=}1000$ πετυχαίνει $91.67\%$,
+ενώ $N{=}2000$ επιστρέφει στο $75\%$. Το $N{=}1000$ αντιπροσωπεύει το
+σημείο όπου τα σημεία είναι αρκετά για να καλύψουν πλούσια τις δράσεις
+αλλά όχι τόσα ώστε να αρχίσουν να επιλέγονται από αδιάφορες περιοχές
+του φόντου.
 
-\textbf{7. Παράμετροι αναφοράς (Laptev et al.) για Harris.}
-Η δοκιμή με $\sigma{=}1$, $\tau{=}0.7$ (κοντά στις παραμέτρους της
-αρχικής εργασίας) δίνει $58.33\%$, υποδηλώνοντας ότι οι παράμετροι
-αυτοί δεν είναι βέλτιστοι για το μικρό μας dataset και τους 100 frames.
-Αυτό αναδεικνύει τη σημασία της βαθμονόμησης παραμέτρων.
+Δοκιμάσαμε τέλος τον Harris με τις παραμέτρους αναφοράς των Laptev et
+al.\ ($\sigma{=}1$, $\tau{=}0.7$): η ακρίβεια πέφτει στο $50\%$ (HOG+HOF)
+και στο $58.33\%$ (HOG), πολύ χαμηλότερα από τη δική μας ρύθμιση
+$\sigma{=}2, \tau{=}1.5$. Αυτό δείχνει ότι οι τιμές του paper δεν
+μεταφέρονται αυτόματα στο δικό μας υποσύνολο με μόνο τους πρώτους $100$
+frames, και επιβεβαιώνει την ανάγκη βαθμονόμησης ανά dataset.
 
-\textbf{Σύγκριση με βιβλιογραφία.}
-Η βέλτιστη ακρίβειά μας ($91.67\%$) είναι συγκρίσιμη με την επίδοση
-$91.8\%$ των Laptev et al.~\cite{laptev2008} στο KTH με BoF+$\chi^2$-SVM.
-Αξίζει να σημειωθεί ότι οι Laptev et al. χρησιμοποιούν πολυ-κλιμακωτή
-ανίχνευση ($\sigma_i = 2^{(1+i)/2}$, $\tau_j = 2^{j/2}$) και $K{=}4000$,
-ενώ εμείς επιτυγχάνουμε παρόμοια αποτελέσματα με μονο-κλιμακωτή ανίχνευση
-και $K{=}100$, χάρη στο μικρότερο και πιο ομοιόμορφο σύνολο δεδομένων
-(μόνο 3 κλάσεις, ελεγχόμενες συνθήκες λήψης).
+Ο καλύτερος συνδυασμός του πειράματός μας είναι ο Gabor ανιχνευτής με
+HOG+HOF περιγραφητές, $\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, και
+είτε $N{=}500$ με $K{=}100$, είτε $N{=}1000$ με $K{=}50$. Η ακρίβεια
+$91.67\%$ είναι πρακτικά ίδια με το $91.8\%$ που αναφέρουν οι Laptev et
+al.\ στο πλήρες KTH με BoF$+\chi^2$-SVM, αν και εμείς την πετυχαίνουμε
+με μονο-κλιμακωτή ανίχνευση και μικρό λεξιλόγιο — δικαιολογημένο από το
+ότι το δικό μας υποσύνολο έχει $3$ κλάσεις αντί $6$ και ισοζυγισμένα
+splits.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}
@@ -667,12 +983,12 @@ $91.8\%$ των Laptev et al.~\cite{laptev2008} στο KTH με BoF+$\chi^2$-SVM
 \bibitem{laptev2008}
 I.~Laptev, M.~Marszalek, C.~Schmid, and B.~Rozenfeld,
 ``Learning realistic human actions from movies,''
-in \textit{Proc. IEEE CVPR}, pp.~1--8, 2008.
+in \textit{Proc. IEEE CVPR}, pp.~1-8, 2008.
 
 \bibitem{laptev2003}
 I.~Laptev and T.~Lindeberg,
 ``Space-time interest points,''
-in \textit{Proc. IEEE ICCV}, vol.~1, pp.~432--439, 2003.
+in \textit{Proc. IEEE ICCV}, vol.~1, pp.~432-439, 2003.
 
 \end{thebibliography}
 
