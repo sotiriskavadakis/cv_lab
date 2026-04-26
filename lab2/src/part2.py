@@ -24,30 +24,29 @@ pictures_dir = os.path.join(lab2_dir, 'docs', 'pictures')
 os.makedirs(results_dir, exist_ok=True)
 os.makedirs(pictures_dir, exist_ok=True)
 
-# clean up old outputs from this script
+#clean up old outputs from this script
 for old in glob.glob(os.path.join(results_dir, '*.png')) + glob.glob(os.path.join(results_dir, '*.gif')):
     os.remove(old)
 
-# ─── 2.1: interest point detectors (Harris3D, Gabor) ──────────────────────────────────────────────
+#2.1: interest point detectors (Harris3D, Gabor) 
 
 def gaussian_smooth_3d(volume, sigma_s, sigma_t):
-    n_s = int(np.ceil(3 * sigma_s)) * 2 + 1
-    n_t = int(np.ceil(3 * sigma_t)) * 2 + 1
-    k_s = cv2.getGaussianKernel(n_s, sigma_s).flatten()
-    k_t = cv2.getGaussianKernel(n_t, sigma_t).flatten()
-    out = convolve1d(volume, k_s, axis=0)
-    out = convolve1d(out, k_s, axis=1)
-    out = convolve1d(out, k_t, axis=2)
+    n_s = int(np.ceil(3 * sigma_s)) * 2 + 1 #kernel size for spatial smoothing
+    n_t = int(np.ceil(3 * sigma_t)) * 2 + 1 #the same just for temporal smoothing
+    k_s = cv2.getGaussianKernel(n_s, sigma_s).flatten() #1D Gaussian kernel for spatial smoothing
+    k_t = cv2.getGaussianKernel(n_t, sigma_t).flatten() #1D Gaussian kernel for temporal smoothing
+    out = convolve1d(volume, k_s, axis=0) #smooth along y-axis
+    out = convolve1d(out, k_s, axis=1) #now along x-axis
+    out = convolve1d(out, k_t, axis=2) #finally along temporal axis
     return out
 
 def harris_detector(video, sigma, tau, k, s, thresh, top_n):
-    """Spatiotemporal Harris interest point detector (3D Harris-Stephens).
-    Returns: (points, H) where points is Nx4 [x,y,t,sigma] and H is the response volume."""
-    video = video.astype(np.float64) / 255.0
 
-    L = gaussian_smooth_3d(video, sigma, tau)
+    video = video.astype(np.float64) / 255.0 #convert to float in [0,1] for processing
 
-    # spatiotemporal derivatives via central differences [-1, 0, 1]
+    L = gaussian_smooth_3d(video, sigma, tau) #smooth with (σ,τ) to get the smoothed video L
+
+    #spatiotemporal derivatives via central differences [-1, 0, 1]
     d = np.array([-1.0, 0.0, 1.0])
     Lx = convolve1d(L, d, axis=1)
     Ly = convolve1d(L, d, axis=0)
@@ -61,7 +60,7 @@ def harris_detector(video, sigma, tau, k, s, thresh, top_n):
     LxLt = Lx * Lt
     LyLt = Ly * Lt
 
-    # smooth each product of the structure tensor
+    #smooth each product of the structure tensor
     Lx2  = gaussian_smooth_3d(Lx2,  s * sigma, s * tau)
     Ly2  = gaussian_smooth_3d(Ly2,  s * sigma, s * tau)
     Lt2  = gaussian_smooth_3d(Lt2,  s * sigma, s * tau)
@@ -69,24 +68,24 @@ def harris_detector(video, sigma, tau, k, s, thresh, top_n):
     LxLt = gaussian_smooth_3d(LxLt, s * sigma, s * tau)
     LyLt = gaussian_smooth_3d(LyLt, s * sigma, s * tau)
 
-    # Harris criterion: H = det(M) - k * trace(M)^3
+    # we now implement the Harris criterion: H = det(M) - k * trace(M)^3
     trace_M = Lx2 + Ly2 + Lt2
     det_M = (Lx2 * (Ly2 * Lt2 - LyLt ** 2)
              - LxLy * (LxLy * Lt2 - LyLt * LxLt)
              + LxLt * (LxLy * LyLt - Ly2 * LxLt))
     H = det_M - k * (trace_M ** 3)
 
-    H[H <= thresh * H.max()] = 0
-    top_indices = np.argsort(H.ravel())[-top_n:][::-1]
-    ys, xs, ts = np.unravel_index(top_indices, H.shape)
-    points = np.column_stack([xs, ys, ts, np.full(len(xs), sigma)])
+    H[H <= thresh * H.max()] = 0 # thresholding by global max
+    top_indices = np.argsort(H.ravel())[-top_n:][::-1] #get top N indices in descending order
+    ys, xs, ts = np.unravel_index(top_indices, H.shape) #convert flat indices to 3D coordinates
+    points = np.column_stack([xs, ys, ts, np.full(len(xs), sigma)]) #stack into Nx4 array [x,y,t,sigma]
     return points, H
 
 def gabor_detector(video, sigma, tau, thresh, top_n):
-    """Spatiotemporal Gabor interest point detector."""
+
     video = video.astype(np.float64) / 255.0
 
-    # gabor filters on the window of [-2*τ, 2*τ] with frequency 4/τ
+    #gabor filters on the window of [-2*τ, 2*τ] with frequency 4/τ
     omega = 4.0 / tau
     t = np.arange(-int(2 * tau), int(2 * tau) + 1, dtype=np.float64) # temporal window
     gaussian = np.exp(-t ** 2 / (2 * tau ** 2))
@@ -109,30 +108,17 @@ def gabor_detector(video, sigma, tau, thresh, top_n):
     # calculate the gabor response magnitude
     H = resp_ev ** 2 + resp_od ** 2
 
-    H[H <= thresh * H.max()] = 0
+    # 
+    H[H <= thresh * H.max()] = 0 
     top_indices = np.argsort(H.ravel())[-top_n:][::-1]
     ys, xs, ts = np.unravel_index(top_indices, H.shape)
     points = np.column_stack([xs, ys, ts, np.full(len(xs), sigma)])
     return points, H
 
-# ─── 2.2: HOG/HOF descriptors ───────────────────────────────────────────────
+#  2.2: HOG/HOF descriptors ──
 
 def compute_descriptors(video, points, nbins=8, ncells=3):
-    """Compute HOG/HOF descriptors for each interest point.
 
-    2.2.1: gradient (Sobel) and TV-L1 optical flow per frame.
-    2.2.2: orientation_histogram on a 4*sigma patch around each point,
-           concatenate HOG and HOF into a single descriptor.
-
-    Args:
-        video: H x W x T uint8 grayscale video
-        points: Nx4 array [x, y, t, sigma]
-        nbins: number of histogram bins
-        ncells: grid size for orientation_histogram (ncells x ncells)
-
-    Returns:
-        descriptors: Nx(2 * ncells * ncells * nbins) array
-    """
     H, W, T = video.shape # video dimensions (height, width, frames)
     descriptors = np.zeros((len(points), 2 * ncells * ncells * nbins))
 
@@ -188,7 +174,7 @@ sample_videos = {
     'handclapping': os.path.join(data_dir, 'handclapping', os.listdir(os.path.join(data_dir, 'handclapping'))[0]),
 }
 
-# ─── 2.1.4: visualize H map + detections ─────────────────────────────────────
+#  2.1.4: visualize H map + detections 
 
 viz_configs = [
     ('harris', harris_detector, dict(sigma=4, tau=1.5, k=0.005, s=2, thresh=0.05, top_n=500)),
@@ -196,14 +182,14 @@ viz_configs = [
     ('harris', harris_detector, dict(sigma=2, tau=1.5, k=0.005, s=1.5, thresh=0.05, top_n=500)),
     ('gabor',  gabor_detector,  dict(sigma=2, tau=1.5,             thresh=0.05,       top_n=500)),
 ]
-def _save_gif(video, pts, gif_path):
+def _save_gif(video, pts, gif_path): # helper function to save a GIF of the detections on the video
     from PIL import ImageDraw, ImageFont
     tmpdir = tempfile.mkdtemp()
-    show_detection(video, pts, save_path=tmpdir)
+    show_detection(video, pts, save_path=tmpdir) 
     frames = [Image.open(os.path.join(tmpdir, f'frame{i}.png')).convert('RGB')
               for i in range(video.shape[2])]
     frames[0].save(gif_path, save_all=True, append_images=frames[1:], duration=40, loop=0)
-    shutil.rmtree(tmpdir)
+    shutil.rmtree(tmpdir) 
 
 def _save_png(src, fname):
     for d in [results_dir, pictures_dir]:
@@ -242,12 +228,12 @@ for det_name, det_func, det_kw in viz_configs:
         shutil.rmtree(tmpdir)
         print(f"  Saved GIF: {os.path.basename(gif_path)}")
 
-# ─── 2.3: Bag of Visual Words + SVM classification ───────────────────────────
+#2.3: Bag of Visual Words + SVM classification 
 
 actions = ['running', 'handclapping', 'walking']
 label_map = {a: i for i, a in enumerate(actions)}
 
-# 2.3.1: train/test split based on provided file
+#2.3.1: train/test split based on provided file
 train_file = os.path.join(data_dir, 'traininng_videos.txt')
 with open(train_file) as f:
     train_names = set(line.strip() for line in f if line.strip())
