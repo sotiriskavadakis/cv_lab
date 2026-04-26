@@ -1,5 +1,4 @@
-\xpginauxfiletrue 
-\selectlanguage *{greek}
+\xpg@aux {}{greek}
 \contentsline {section}{\numberline {1}Παρακολούθηση Προσώπου και Χεριών με Χρήση της Μεθόδου Οπτικής Ροής των Lucas-Kanade}{3}{section.1}%
 \contentsline {subsection}{\numberline {1.1}Υλοποίηση του Αλγορίθμου των Lucas-Kanade}{3}{subsection.1.1}%
 \contentsline {subsection}{\numberline {1.2}Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}{13}{subsection.1.2}%
@@ -28,4 +27,3 @@
 \contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{32}{subsubsection.3.2.2}%
 \contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{32}{subsubsection.3.2.3}%
 \contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{32}{subsubsection.3.2.4}%
-\xpginauxfilefalse 

@@ -555,7 +555,7 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
         \caption{Kαρέ 66 $\rightarrow$ 70}
     \end{subfigure}
     \caption{Παράδειγμα για ρ=1, ε=0.1 κατώφλι 0.1 .}
-    \label{fig:flow_grids1}
+    \label{fig:flow_grids2}
 \end{figure}
 Παρατηρούμε ότι όντως με αυτές τις τιμές των παραμέτρων η παρακολούθηση δεν λειτουργεί σωστά, καθώς τα κουτιά χάνουν το αντικείμενο που παρακολουθούν και μετατοπίζονται σε λάθος σημεία, ειδικά στο αριστερό χέρι όπου η κίνηση είναι πιο έντονη.\\
 Οπότε πρέπει αν αυξήσουμε το \texttt{rho} και το κατώφλι και να μειώσουμε το \texttt{epsilon} για να έχουμε καλύτερες εκτιμήσεις της οπτικής ροής και συνεπώς καλύτερη παρακολούθηση. Παρακάτω φαίνονται ορισμένα καρέ από την τελική κίνηση της παρακολούθησης για το πρόσωπο, το αριστερό χέρι και το δεξί χέρι με παραμέτρους \texttt{rho=5} και \texttt{epsilon=0.001} και κατώφλι ενέργειας 1, όπου φαίνεται ότι η παρακολούθηση λειτουργεί πολύ καλύτερα λόγω των πολύ καλύτερων εκτιμήσεων της οπτικής ροής που είχαμε με αυτές τις παραμέτρους:
@@ -567,7 +567,7 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
         \caption{Kαρέ 23 $\rightarrow$ 27}
     \end{subfigure}
     \caption{Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 .}
-    \label{fig:flow_grids1}
+    \label{fig:flow_grids3}
 \end{figure}
 \begin{figure}[H]
     \centering
@@ -577,7 +577,7 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
         \caption{Kαρέ 66 $\rightarrow$ 70}
     \end{subfigure}
     \caption{Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 .}
-    \label{fig:flow_grids1}
+    \label{fig:flow_grids4}
 \end{figure}
 Παρατηρούμε ότι με τις νέες παραμέτρους έχουμε πολύ καλύτερη παρακολούθηση στα ίδια ακριβώς καρέ όπως φαίνεται και μόνο στα τελευταάι καρέ όπου η ομοιλίτρια κάνει μία πολύ απότομη κίνηση με το αριστερό χέρι δεν έχουμε τέλεια παρακολούθηση, κάτι το οποίο θα βελτιώσουμε με τη πολυκλιμακωτή εκδοχή του αλγορίθμου. 
 Παρολαυτά, δοκιμάσαμε και με τις παραμέτρους \texttt{rho=10} και \texttt{epsilon=0.001} και κατώφλι ενέργειας 10 και τα αποτελέσματα φαίνονται στα παρακάτω σχήματα για ίδια καρέ που είχαμε επιλέξει παραπάνω:
@@ -589,7 +589,7 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
         \caption{Kαρέ 23 $\rightarrow$ 27}
     \end{subfigure}
     \caption{Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 .}
-    \label{fig:flow_grids1}
+    \label{fig:flow_grids5}
 \end{figure}
 \begin{figure}[H]
     \centering
@@ -599,7 +599,7 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
         \caption{Kαρέ 66 $\rightarrow$ 70}
     \end{subfigure}
     \caption{Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 .}
-    \label{fig:flow_grids1}
+    \label{fig:flow_grids6}
 \end{figure}
 
 Παρατηρούμε ότι με αυτές τις παραμέτρους έχουμε χειρότερα αποτελέσματα καθώς τόσο στα καρέ 23 με 27 έχε χαλάσει η παρακολούθηση του δεξιού χεριού ενώ και στα καρέ 66 με 70 η παρακολούθηση χειροτέρευσε, ενδεχομένως επειδή με τόσο υψηλό κατώφλι ενέργειας αποκλείουμε σημαντικά διανύσματα που συνεισφέρουν στη παρακολούθηση.
@@ -640,27 +640,27 @@ cv2.VideoWriter μετατρέψαμε την ακολουθία εικόνων 
 
 Ο ανιχνευτής Harris3D~\cite{laptev2003} αποτελεί χωρο-χρονική επέκταση του
 κλασικού ανιχνευτή γωνιών Harris-Stephens. Ο 2D Harris-Laplacian εντοπίζει χωρικές γωνίες
-σε πολλαπλές κλίμακες ανεξαρτήτως κίνησης (αριστερά), ενώ ο Harris3D εντοπίζει σημεία που
+σε πολλαπλές κλίμακες ανεξαρτήτως κίνησης, ενώ ο Harris3D εντοπίζει σημεία που
 πληρούν το κριτήριο γωνιότητας και στις τρεις διαστάσεις και συνεπώς είναι
-πιο εστιασμένος στις δράσεις, λαμβάνοντας υπόψη και τη διάσταση του χρόνου (δεξιά). Η διαφορά τους φαίνεται εποπτικά στο Σχήμα~\ref{fig:harris_comparison}: 
+πιο εστιασμένος στις δράσεις, λαμβάνοντας υπόψη και τη διάσταση του χρόνου. Η διαφορά τους φαίνεται εποπτικά στο Σχήμα~\ref{fig:harris_comparison}: 
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{harris2d_multiscale.png}
-        \caption{2D Harris-Laplacian (πολλαπλές κλίμακες)}
+        \caption{Multiscale 2D Harris-Laplacian}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{harris3d_multiscale.png}
-        \caption{Harris3D (πολλαπλές κλίμακες)}
+        \caption{Multiscale Harris3D}
     \end{subfigure}
-    \caption{Σύγκριση 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking" (KTH).
-    Αριστερά: ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα,
+    \caption{Σύγκριση πολυκλιμακωτών 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking".
+    Ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα,
     υφές και γωνίες φόντου, σε διαφορετικές χωρικές κλίμακες.
-    Δεξιά: ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις
+    Από την άλλη ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις
     περιοχή των άκρων που αφορά τον βηματσμό,
     φιλτράροντας ανενεργές περιοχές του φόντου.}
     \label{fig:harris_comparison}
@@ -692,13 +692,13 @@ $g(s\sigma, s\tau)$ είναι ο γκαουσιανός πυρήνας κλίμ
 του, χωρίς να εισάγει μετατόπιση φάσης.
 
 Όταν και οι τρεις ιδιοτιμές του $\mathbf{M}$ είναι μεγάλες, το voxel αναγνωρίζεται
-ως «γωνία» στον χωρο-χρόνο. Αντί για ρητό υπολογισμό ιδιοτιμών, χρησιμοποιείται
-το αλγεβρικό κριτήριο:
+ως «γωνία» στον χωρο-χρόνο. Ως 3D κριτήριο γωνιότητας χρησιμοποιείται
+το εξής:
 \begin{equation}
     H(x,y,t) = \det(\mathbf{M}) - k \cdot \mathrm{trace}^3(\mathbf{M})
 \end{equation}
-Τα σημεία επιλέγονται με κατωφλίωση $H > \theta \cdot H_{\max}$, NMS σε γειτονιά
-$3\times3\times3$ και διατήρηση των $N$ ισχυρότερων.
+
+Για την τελική επιλογή των σημείων, τα δεδομένα κατωφλιοποιούνται με βάση το μέγιστο της συνολικής απόκρισης του βίντεο $H > \theta \cdot H_{\max}$. Έπειτα, τα voxels που ικανοποιούν το κριτήριο μετατρέπονται σε μονοδιάστατο διάνυσμα (flattening), ταξινομούνται ως προς την έντασή τους και διατηρούνται τα $N$ σημεία με τη μέγιστη τιμή.
 
 Ως προς την υλοποίηση, η 3D Gaussian εξομάλυνση εκτελείται ως τρεις διαδοχικές
 \emph{1D} συνελίξεις κατά τους άξονες $x$, $y$, $t$ χωριστά, εκμεταλλευόμενη τη
@@ -706,7 +706,7 @@ $3\times3\times3$ και διατήρηση των $N$ ισχυρότερων.
 $\det(\mathbf{M})$ γίνεται αναλυτικά μέσω της εκτεταμένης μορφής της $3\times3$
 ορίζουσας, αποφεύγοντας αριθμητική αποσύνθεση σε ιδιοτιμές.
 
-Αν και στη βιβλιογραφία \cite{laptev2008} προτείνεται πολυκλιμακική ανίχνευση (εξαγωγή σημείων σε πολλαπλές κλίμακες $(\sigma_i,\tau_j)$ για μείωση υπολογιστικού κόστους και ανεξαρτησία από σφάλματα επιλογής κλίμακας), στην παρούσα εργασία χρησιμοποιήθηκε ενιαία κλίμακα, εστιάζοντας στη μελέτη της επίδρασης των παραμέτρων $\sigma$, $\tau$ και $k$.
+Αν και στη βιβλιογραφία \cite{laptev2008} προτείνεται πολυκλιμακική ανίχνευση (εξαγωγή σημείων σε πολλαπλές κλίμακες $(\sigma_i,\tau_j)$), στην παρούσα εργασία χρησιμοποιήθηκε ενιαία κλίμακα για μείωση υπολογιστικού κόστους.
 
 \subsubsection{Ανιχνευτής Gabor}
 
@@ -734,13 +734,13 @@ Gabor εστιάζει στην \emph{ενέργεια} τοπικής κίνη�
 ζωνοπερατού φίλτρου: δύο Γκαουσιανοί όγκοι συγκεντρωμένοι γύρω από $\pm(\omega_{x_0},\omega_{y_0},\omega_{t_0})$.
 
 Για κάθε κλίμακα $(\sigma, \tau)$ ορίζεται ένα \textbf{ζεύγος τετραγωνισμού}
-(quadrature pair) — ένα άρτιο φίλτρο (συνημίτονο) και ένα περιττό (ημίτονο):
+(quadrature pair), δηλαδή ένα άρτιο φίλτρο (συνημίτονο) και ένα περιττό (ημίτονο):
 \begin{align}
     h_{\text{ev}}(t;\,\tau) &= \cos(2\pi \omega t)\cdot g(t;\,\tau), &
     h_{\text{od}}(t;\,\tau) &= \sin(2\pi \omega t)\cdot g(t;\,\tau)
 \end{align}
 όπου $g(t;\tau) = \exp\!\bigl(-t^2/(2\tau^2)\bigr)$ και $\omega = 4/\tau$.
-Τα φίλτρα κανονικοποιούνται ως προς τη νόρμα $L_1$ και εκτείνονται σε
+Τα φίλτρα κανονικοποιούνται ως προς τη $L_1$ νόρμα και εκτείνονται σε
 $t \in [-2\tau, 2\tau]$. Το ζεύγος αξιοποιεί την ιδιότητα ότι $\cos^2\!+\sin^2\!=1$:
 η συνδυασμένη ενέργεια εξόδου δεν εξαρτάται από τη χρονική φάση της κίνησης, άρα
 ανιχνεύει ρυθμικά κινούμενες δομές ανεξαρτήτως της στιγμής μέτρησης.
@@ -761,55 +761,48 @@ $[-2\tau, 2\tau]$ χωράνε ακριβώς \emph{δύο πλήρεις ταλ
 Όσον αφορά την υλοποίηση του, εκμεταλλευόμαστε τη \emph{διαχωρισιμότητα} του 3D φίλτρου
 Gabor: χωρική εξομάλυνση (2D Gaussian, κλίμακα $\sigma$) και χρονική συνέλιξη
 (1D Gabor, κλίμακα $\tau$) εκτελούνται ανεξάρτητα κατά τους αντίστοιχους άξονες,
-μειώνοντας σημαντικά το υπολογιστικό κόστος. Σημειώνεται ότι στο πλήρες 3D μοντέλο
-(εξ.~παραπάνω) το χωρικό τμήμα του φίλτρου έχει και χωρικές συχνότητες
+μειώνοντας σημαντικά το υπολογιστικό κόστος. Σημειώνεται ότι στο πλήρες 3D μοντέλο το χωρικό τμήμα του φίλτρου έχει και χωρικές συχνότητες
 $(\omega_{x_0}, \omega_{y_0}) \neq 0$, δηλαδή είναι \emph{προσανατολισμένο} στον
 χώρο. Στην υλοποίησή μας ο χωρικός προσανατολισμός αφαιρείται θέτοντας
 $\omega_{x_0}\!=\!\omega_{y_0}\!=\!0$, οπότε η χωρική συνιστώσα εκφυλίζεται σε
-ισότροπη Γκαουσιανή εξομάλυνση — απλοποίηση που μειώνει το μέγεθος της τράπεζας
-φίλτρων αλλά χάνει την ευαισθησία σε χωρική κατεύθυνση κίνησης.
+ισότροπη Γκαουσιανή εξομάλυνση, απλοποίηση που μειώνει το μέγεθος του filterbank αλλά χάνει την ευαισθησία σε χωρική κατεύθυνση κίνησης.
 
 \subsubsection{Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}
 
 Και οι δύο ανιχνευτές ακολουθούν κοινή στρατηγική επιλογής σημείων:
 \begin{enumerate}
-    \item \textbf{Κατωφλίωση}: διατηρούνται μόνο voxels με
-          $H(x,y,t) > \theta \cdot H_{\max}$, ώστε να απορριφθούν ομαλές
+    \item \textbf{Κατωφλιοποίηση}: διατηρούνται μόνο voxels με
+          $H(x,y,t) > \theta \cdot H_{\max}$ (όπου $H_{\max}$ το global maximum μεταξύ όλων των frames), ώστε να απορριφθούν ομαλές
           ή χαμηλής ενέργειας περιοχές. Η παράμετρος $\theta$ ελέγχει
-          πόσο αυστηρή είναι αυτή η απόρριψη.
-    \item \textbf{Non-maximum suppression (NMS)}: κρατούνται μόνο τα τοπικά
-          μέγιστα σε γειτονιά $3\times3\times3$ voxels, εξασφαλίζοντας
-          χωρο-χρονικά διαχωρισμένα σημεία.
-    \item \textbf{Επιλογή top-$N$}: από τα εναπομείναντα σημεία επιλέγονται
+          πόσο αυστηρή είναι αυτή η απόρριψη υποψηφίων.
+    \item \textbf{Επιλογή top-$N$}: Από τα υποψήφια σημεία επιλέγονται
           τα $N$ με τη μεγαλύτερη τιμή απόκρισης $H$.
 \end{enumerate}
 
 \subsubsection{Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}
 
-Για κάθε ανιχνευτή (Harris3D, Gabor) οπτικοποιήθηκαν η απόκριση $H$ και τα
-εντοπισμένα σημεία για ένα αντιπροσωπευτικό βίντεο ανά κλάση δράσης
-(\textit{walking}, \textit{running}, \textit{handclapping}), με παραμέτρους
-$\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, $N{=}500$.
+Για κάθε ανιχνευτή (Harris3D, Gabor) οπτικοποιήθηκαν η απόκριση $H$ και τα εντοπισμένα σημεία για ένα αντιπροσωπευτικό βίντεο ανά κλάση δράσης (\textit{walking}, \textit{running}, \textit{handclapping}), με παραμέτρους $\sigma{=}2$, $\tau{=}1.5$, $\theta{=}0.1$, $N{=}500$.
 
-Για κάθε κλάση παρουσιάζονται διαδοχικά: Harris3D εντοπισμός, Harris3D heatmap,
-Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπευτικά frames.
+Για κάθε κλάση παρουσιάζονται διαδοχικά ο Harris3D εντοπισμός, το Harris3D heatmap, ο Gabor εντοπισμός και το Gabor heatmap, στα τρία frames με τη μεγαλύτερη συγκέντρωση ανιχνευμένων σημείων. Η επιλογή αυτή, διασφαλίζει ότι απεικονίζονται οι φάσεις της εκάστοτε δράσης με την πιο έντονη κινητική πληροφορία.
+
+Επιπρόσθετα, για την πλήρη χωροχρονική αποτίμηση της συμπεριφοράς των ανιχνευτών, εξάγονται GIFs που περιλαμβάνουν ολόκληρη τη χρονική ακολουθία με σημειωμένα τα σημεία ενδιαφέροντος. Αυτό επιτρέπει την καλύτερη ποιοτική αξιολόγηση της σταθερότητας των ανιχνεύσεων.
 
 % ══ walking ════════════════════════════════════════════════════════════════════
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame12_det.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame21_det.png}
+        \caption{frame 21}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame27_det.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame33_det.png}
+        \caption{frame 33}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame34_det.png}
+        \caption{frame 34}
     \end{subfigure}
     \caption{Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:harris_det_walking}
@@ -818,38 +811,38 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame12_H.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame21_H.png}
+        \caption{frame 21}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame27_H.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame33_H.png}
+        \caption{frame 33}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.01_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{walking_harris_s2_t1.5_thr0.02_frame34_H.png}
+        \caption{frame 34}
     \end{subfigure}
-    \caption{Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \caption{Harris3D - walking: χάρτης απόκρισης $H$.}
     \label{fig:harris_H_walking}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame12_det.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame15_det.png}
+        \caption{frame 15}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame27_det.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame44_det.png}
+        \caption{frame 44}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame45_det.png}
+        \caption{frame 45}
     \end{subfigure}
     \caption{Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:gabor_det_walking}
@@ -858,20 +851,20 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame12_H.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame15_H.png}
+        \caption{frame 15}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame27_H.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame44_H.png}
+        \caption{frame 44}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.1_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{walking_gabor_s2_t1.5_thr0.08_frame45_H.png}
+        \caption{frame 45}
     \end{subfigure}
-    \caption{Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \caption{Gabor - walking: χάρτης ενέργειας $H$.}
     \label{fig:gabor_H_walking}
 \end{figure}
 
@@ -879,18 +872,18 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame12_det.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame26_det.png}
+        \caption{frame 26}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame27_det.png}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame27_det.png}
         \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame28_det.png}
+        \caption{frame 28}
     \end{subfigure}
     \caption{Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:harris_det_running}
@@ -899,38 +892,38 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame12_H.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame26_H.png}
+        \caption{frame 26}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame27_H.png}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame27_H.png}
         \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.01_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{running_harris_s2_t1.5_thr0.02_frame28_H.png}
+        \caption{frame 28}
     \end{subfigure}
-    \caption{Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \caption{Harris3D - running: χάρτης απόκρισης $H$.}
     \label{fig:harris_H_running}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame12_det.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame26_det.png}
+        \caption{frame 26}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame27_det.png}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame27_det.png}
         \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame28_det.png}
+        \caption{frame 28}
     \end{subfigure}
     \caption{Gabor - running: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:gabor_det_running}
@@ -939,20 +932,20 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame12_H.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame26_H.png}
+        \caption{frame 26}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame27_H.png}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame27_H.png}
         \caption{frame 27}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.1_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{running_gabor_s2_t1.5_thr0.08_frame28_H.png}
+        \caption{frame 28}
     \end{subfigure}
-    \caption{Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \caption{Gabor - running: χάρτης ενέργειας $H$.}
     \label{fig:gabor_H_running}
 \end{figure}
 
@@ -960,18 +953,18 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame12_det.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame5_det.png}
+        \caption{frame 5}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame27_det.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame6_det.png}
+        \caption{frame 6}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame34_det.png}
+        \caption{frame 34}
     \end{subfigure}
     \caption{Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:harris_det_handclapping}
@@ -980,38 +973,38 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame12_H.png}
-        \caption{frame 12}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame5_H.png}
+        \caption{frame 5}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame27_H.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame6_H.png}
+        \caption{frame 6}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.01_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{handclapping_harris_s2_t1.5_thr0.02_frame34_H.png}
+        \caption{frame 34}
     \end{subfigure}
-    \caption{Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit{hot}).}
+    \caption{Harris3D - handclapping: χάρτης απόκρισης $H$.}
     \label{fig:harris_H_handclapping}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame12_det.png}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame12_det.png}
         \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame27_det.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame13_det.png}
+        \caption{frame 13}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame42_det.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame49_det.png}
+        \caption{frame 49}
     \end{subfigure}
     \caption{Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}
     \label{fig:gabor_det_handclapping}
@@ -1020,52 +1013,28 @@ Gabor εντοπισμός, Gabor heatmap, σε τρία αντιπροσωπε�
 \begin{figure}[H]
     \centering
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame12_H.png}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame12_H.png}
         \caption{frame 12}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame27_H.png}
-        \caption{frame 27}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame13_H.png}
+        \caption{frame 13}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.1_frame42_H.png}
-        \caption{frame 42}
+        \includegraphics[width=\textwidth]{handclapping_gabor_s2_t1.5_thr0.08_frame49_H.png}
+        \caption{frame 49}
     \end{subfigure}
-    \caption{Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit{hot}).}
+    \caption{Gabor - handclapping: χάρτης ενέργειας $H$.}
     \label{fig:gabor_H_handclapping}
 \end{figure}
 
-Παρατηρούμε ότι και οι δύο ανιχνευτές καταφέρνουν να εντοπίσουν σημεία
-ενδιαφέροντος στις περιοχές κίνησης (χέρια, πόδια). Ωστόσο, υπάρχουν
-σημαντικές διαφορές τόσο στον τύπο των σημείων που εντοπίζουν όσο και
-στην πυκνότητά τους.
+Παρατηρούμε ότι και οι δύο ανιχνευτές εντοπίζουν σημεία ενδιαφέροντος στις περιοχές κίνησης (χέρια, πόδια), με σημαντικές ωστόσο διαφορές στη χωροχρονική κατανομή τους:
 
-Ο Harris3D εντοπίζει σημεία σε περιοχές που παρουσιάζουν \emph{ταυτόχρονα}
-χωρική δομή (γωνίες, άκρα) και χρονική μεταβολή.
-Επικεντρώνεται κυρίως στα άκρα των άκρων και στα σύνορα σώματος–φόντου
-όπου η τροχιά κίνησης προκαλεί αλλαγή εμφάνισης.
-Τα σημεία που εντοπίζει τείνουν να είναι \emph{αραιά}: τόσο ο αριθμός των
-frames με ανιχνεύσεις όσο και η πυκνότητα ανά frame είναι χαμηλότερα σε σχέση
-με τον Gabor. Αυτό οφείλεται στο γεγονός ότι ο Harris3D απαιτεί και τα δύο
-κριτήρια (χωρικό \emph{και} χρονικό) να ικανοποιούνται ταυτόχρονα.
+Ο ανιχνευτής \textbf{Gabor} παράγει μια ομαλή και πιο διάχυτη χρονική απόκριση. Επειδή χρησιμοποιεί το ζεύγος τετραγωνικής φάσης που αναλύθηκε νωρίτερα, το άθροισμα των τετραγώνων τους ($h_{ev}^2 + h_{od}^2$) παραμένει σχεδόν σταθερό κατά τη διάρκεια μιας περιοδικής κίνησης (π.χ. χειροκρότημα), με την Gaussian περιβάλλουσα να διαχέει την ενέργεια σε γειτονικά frames. Έτσι, τα σημεία κατανέμονται φυσιολογικά στον χώρο και τον χρόνο.
 
-Ο Gabor αντιδρά κυρίως στη χρονική μεταβολή, εντοπίζοντας περιοχές με
-ρυθμικά επαναλαμβανόμενη κίνηση (ο ρυθμός ορίζεται από $\omega = 4/\tau$).
-Είναι αισθητά πιο ευαίσθητος στις ανιχνεύσεις: σπάνια χάνει σημεία
-ενδιαφέροντος σε frame που εμφανίζεται κινούμενο αντικείμενο.
-Για \textit{handclapping} τα σημεία κατανέμονται πιο ομοιόμορφα κατά μήκος
-της περιοχής κίνησης των χεριών, αντιδρώντας στην περιοδικότητα της δράσης.
-Για \textit{walking} και \textit{running} εντοπίζει κυρίως τα άκρα λόγω της
-μεγαλύτερης χρονικής τους μεταβολής.
-
-Και οι δύο ανιχνευτές εντοπίζουν ευκολότερα έντονες κινήσεις
-(π.χ.\ κίνηση γονάτων και αστραγάλων στο \textit{running})
-από ό,τι πιο αργές (π.χ.\ βάδισμα).
-Ωστόσο, είναι ικανοί να ανιχνεύσουν και πολύ μικρές μετακινήσεις σε
-ορισμένες περιπτώσεις, όπως η ελαφρά μετακίνηση των ποδιών σε σκηνές
-με χαμηλή κινητικότητα.
+Αντίθετα, ο \textbf{Harris3D} απαιτεί την \emph{ταυτόχρονη} κορύφωση ισχυρής χωρικής δομής (γωνίες, άκρα) και χρονικής μεταβολής. Η συνθήκη αυτή ικανοποιείται μόνο σε πολύ συγκεκριμένες στιγμές απότομης μεταβολής (όπως η ακριβής στιγμή της κρούσης στο \textit{handclapping}), προκαλώντας απότομες αιχμές στην απόκριση $H$. Ως αποτέλεσμα, τα top-$N$ σημεία συσσωρεύονται σε πολύ περιορισμένα, εστιασμένα χρονικά «ξεσπάσματα» (temporal bursts).
 
 \subsection{Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}
 
@@ -1102,16 +1071,7 @@ HOG αποτυπώνει τη στιγμιαία \emph{εμφάνιση} (στά
 για περιοδικές δράσεις όπως \textit{walking} ή \textit{running}, όπου
 διαφορετικές φάσεις του κύκλου παράγουν χαρακτηριστικές κατανομές ροής.
 
-Σημειώνουμε ότι στο paper των Laptev et al.\ ο τοπικός όγκος έχει
-διαστάσεις $\Delta x, \Delta y = 2k\sigma$, $\Delta t = 2k\tau$ με $k{=}9$,
-και υποδιαιρείται σε πλέγμα $(n_x, n_y, n_t) = (3, 3, 2)$ cuboids. Στη
-δική μας υλοποίηση αποκλίνουμε συνειδητά από αυτές τις τιμές: ο όγκος
-γίνεται \emph{χωρικός} ($n_t{=}1$) με πλέγμα $3\times3$ και πλευρά
-$4\sigma$ (δηλαδή $k{=}2$), ώστε ο περιγραφητής να παραμένει συμπαγής
-$144$-d (αντί να κλιμακωθεί σε $432$-d από τα $2\!\times\!3\!\times\!3$
-cuboids του paper) και να κρατήσουμε χαμηλό το υπολογιστικό κόστος σε
-ολόκληρο το pipeline — οι δοκιμές μας έδειξαν ότι η μείωση του patch
-δεν βλάπτει σημαντικά την τελική ακρίβεια.
+Σε αντίθεση με την αρχική μέθοδο των Laptev et al., η οποία αναλύει έναν μεγάλο τρισδιάστατο χωροχρονικό όγκο γύρω από κάθε σημείο ενδιαφέροντος, στη δική μας υλοποίηση ακολουθήσαμε μια πιο ελαφριά προσέγγιση. Συγκεκριμένα, καταργήσαμε τη χρονική υποδιαίρεση του όγκου ($n_t=1$) και εξετάζουμε αποκλειστικά ένα δισδιάστατο (χωρικό) παράθυρο μεγέθους $4\sigma \times 4\sigma$ στο frame όπου εντοπίστηκε το σημείο. Αυτή η απλοποίηση σε ένα χωρικό πλέγμα $3\times3$ διατηρεί τον τελικό περιγραφητή HOG+HOF εξαιρετικά συμπαγή (στις 144 διαστάσεις), αποτρέποντας την εκθετική αύξηση του μεγέθους του.
 
 \subsubsection{Υπολογισμός Gradient και Οπτικής Ροής}
 
@@ -1145,11 +1105,11 @@ $\sigma$ του ανιχνευτή εξασφαλίζει ότι ο περιγρ
 μπορεί να προκύψουν για σημεία πολύ κοντά στο περιθώριο παραλείπονται από την υλοποίηση μας.
 
 Πάνω σε κάθε τέτοιο patch εφαρμόζεται η έτοιμη συνάρτηση
-\texttt{orientation\_histogram} του δοσμένου υλικού, η οποία είναι
+\texttt{orientation\_histogram} των \texttt{utils}, η οποία είναι
 γενική και δέχεται οποιοδήποτε διανυσματικό πεδίο $(u, v)$ πάνω στο
-patch· ανάλογα με το τι της τροφοδοτούμε, παράγεται είτε HOG είτε HOF.
+patch και ανάλογα με το όρισμα που της τροφοδοτούμε, παράγεται είτε HOG είτε HOF.
 Εσωτερικά, η συνάρτηση υποδιαιρεί το patch σε πλέγμα $3\times 3$ κελιών
-και σε κάθε κελί φτιάχνει ιστόγραμμα $8$ bins με βάση τη γωνία του
+και σε κάθε κελί φτιάχνει ιστόγραμμα των $8$ bins με βάση τη γωνία του
 $(u, v)$ κάθε pixel, σταθμισμένο με το μέτρο του $\sqrt{u^2+v^2}$
 — έτσι ώστε ισχυρά διανύσματα (έντονες ακμές ή γρήγορη κίνηση) να
 μετρούν περισσότερο από θορυβώδη. Τα εννέα $8$-d ιστογράμματα
@@ -1163,8 +1123,7 @@ $(G_x, G_y)$ του frame $t_0$, οπότε το ιστόγραμμα αποτυ
 συνιστώσες της οπτικής ροής $(f_x, f_y)$ μεταξύ των frames $t_0$ και
 $t_0{+}1$, οπότε τώρα το ιστόγραμμα αποτυπώνει τις κατευθύνσεις και τις
 εντάσεις της τοπικής κίνησης. Αν το σημείο ενδιαφέροντος εντοπιστεί
-στο τελευταίο frame όπου δεν υπάρχει εμπρόσθια ροή, χρησιμοποιείται
-μηδενικό πεδίο.
+στο τελευταίο frame όπου δεν υπάρχει επόμενο διαδοχικό frame, κάνουμε νοητό zero-padding με μηδενικό πεδίο.
 
 Τα δύο $72$-d υπο-διανύσματα συνενώνονται σε έναν ενιαίο περιγραφητή
 $144$ διαστάσεων $[\text{HOG}\,\|\,\text{HOF}]$, με τις πρώτες $72$
@@ -1193,40 +1152,19 @@ Words (BoVW)}. Με K-means πάνω στους περιγραφητές εκπ�
 \subsubsection{Διαχωρισμός Συνόλου Δεδομένων}
 
 Ο διαχωρισμός των βίντεο σε σύνολα εκπαίδευσης και ελέγχου ορίζεται από
-το αρχείο \texttt{traininng\_videos.txt} που συνοδεύει το dataset.
-Διαβάζουμε τα ονόματα που περιέχει, συλλέγουμε όλα τα \texttt{.avi} από
+το αρχείο \texttt{traininng\_videos.txt}.
+Διαβάζουμε τα ονόματα που περιέχει, συλλέγουμε όλα τα αρχεία με κατάληξη \texttt{.avi} από
 τους φακέλους των τριών δράσεων (\textit{walking}, \textit{running},
 \textit{handclapping}), και χωρίζουμε σε $36$ βίντεο εκπαίδευσης και $12$
 βίντεο ελέγχου ανάλογα με το αν το όνομα κάθε αρχείου περιλαμβάνεται ή
 όχι στη λίστα. Από κάθε βίντεο φορτώνουμε τα πρώτα $100$ καρέ σε
-αποχρώσεις του γκρι, μέσω της συνάρτησης \texttt{read\_video}.
+grayscale, μέσω της συνάρτησης \texttt{read\_video}.
 
 \subsubsection{Κατασκευή Λεξιλογίου visual words}
 
-Για την κωδικοποίηση κάθε βίντεο σε ένα ιστόγραμμα visual words
-χρησιμοποιούμε τη συνάρτηση \texttt{bag\_of\_words} του
-\texttt{cv26\_lab2\_utils.py}. Η κλήση γίνεται ως
-\texttt{bow\_tr, bow\_ts = bag\_of\_words(tr, ts, num\_centers=K)}, όπου
-\texttt{tr} και \texttt{ts} είναι λίστες μήκους ίσου με τον αριθμό των
-train και test βίντεο αντίστοιχα, και κάθε στοιχείο τους είναι ένας
-δισδιάστατος πίνακας με έναν περιγραφητή ανά γραμμή. Η παράμετρος
-\texttt{num\_centers} ορίζει το πλήθος $K$ των κεντροειδών του K-means,
-δηλαδή το μέγεθος του λεξιλογίου. Εσωτερικά η συνάρτηση τρέχει K-means
-μόνο στους περιγραφητές εκπαίδευσης (χρησιμοποιώντας τυχαίο δείγμα $50\%$
-για ταχύτητα) και μετά κβαντίζει κάθε περιγραφητή κάθε βίντεο στο
-πλησιέστερο κεντροειδές, επιστρέφοντας $\ell_2$-κανονικοποιημένα
-ιστογράμματα συχνοτήτων.
+Για τη μετατροπή κάθε βίντεο σε Bag of Visual Words, χρησιμοποιούμε τη συνάρτηση \texttt{bag\_of\_words} του \texttt{cv26\_lab2\_utils.py}. Η κλήση έχει τη μορφή \texttt{bow\_tr, bow\_ts = bag\_of\_words(tr, ts, num\_centers=K)}, όπου τα \texttt{tr} και \texttt{ts} περιέχουν τους περιγραφητές των βίντεο εκπαίδευσης και ελέγχου αντίστοιχα, ενώ το $K$ ορίζει το μέγεθος του λεξιλογίου. Για λόγους ταχύτητας, η συνάρτηση εκτελεί τον αλγόριθμο K-means σε ένα τυχαίο δείγμα ($50\%$) των δεδομένων εκπαίδευσης. Στη συνέχεια, αντιστοιχίζει κάθε περιγραφητή στο κοντινότερο κεντροειδές (λέξη) και επιστρέφει $\ell_2$-κανονικοποιημένα ιστογράμματα συχνοτήτων.
 
-Στη δική μας υλοποίηση καλούμε την \texttt{bag\_of\_words} μέσα σε έναν
-βρόχο που διατρέχει διαφορετικούς συνδυασμούς ανιχνευτή (Harris, Gabor,
-ή το union των δύο), τύπου περιγραφητή (HOG, HOF, ή HOG/HOF) και
-μεγέθους λεξιλογίου. Για τα πειράματα που χρησιμοποιούν μόνο έναν
-υπο-περιγραφητή, αρκεί να κρατήσουμε τις πρώτες ή τις τελευταίες $72$
-στήλες κάθε πίνακα περιγραφητών (\texttt{d[:, :72]} για HOG,
-\texttt{d[:, 72:]} για HOF) πριν την κλήση, αξιοποιώντας τη διάταξη
-$[\text{HOG}\,\|\,\text{HOF}]$ που επιβάλαμε στο 2.2.2. Ως μέγεθος
-λεξιλογίου δοκιμάζουμε στα τελικά μας πειράματα $K \in \{50, 100, 200\}$, ώστε να αξιολογήσουμε
-την επίδραση της χωρητικότητας του λεξιλογίου στην τελική ακρίβεια.
+Στην υλοποίησή μας, τρέχουμε την \texttt{bag\_of\_words} μέσα σε έναν βρόχο (loop) για να δοκιμάσουμε συστηματικά διάφορους συνδυασμούς ανιχνευτών, περιγραφητών και μεγεθών $K$[cite: 214]. Χάρη στη διάταξη $[\text{HOG}\,\|\,\text{HOF}]$ που ορίσαμε στην προηγούμενη ενότητα, ο διαχωρισμός των περιγραφητών είναι άμεσος: αν θέλουμε μόνο HOG κρατάμε τις πρώτες $72$ στήλες (\texttt{d[:, :72]}), ενώ για HOF τις τελευταίες $72$ (\texttt{d[:, 72:]})[cite: 215]. Τέλος, πειραματιζόμαστε με μεγέθη λεξιλογίου $K \in \{50, 100, 200\}$ για να εξετάσουμε πώς η χωρητικότητά του επηρεάζει την τελική ακρίβεια ταξινόμησης[cite: 216].
 
 \subsubsection{Ταξινόμηση με SVM}
 
