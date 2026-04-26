@@ -336,19 +336,19 @@ def _get_descriptors(name, func, kw):
             loaded[key] = pickle.load(fh)
         return loaded[key]
     print(f"  Computing {name} descriptors...")
-    tr_desc, tr_labels, ts_desc, ts_labels = [], [], [], []
+    desc_train, train_labels, desc_test, test_labels = [], [], [], []
     for action, n, vpath in train_videos:
         vid = read_video(vpath, gray=True, num_frames=100)
         pts, _ = func(vid, **kw)
-        tr_desc.append(compute_descriptors(vid, pts))
-        tr_labels.append(label_map[action])
+        desc_train.append(compute_descriptors(vid, pts))
+        train_labels.append(label_map[action])
         print(f"    train {n}: {len(pts)} pts")
     for action, n, vpath in test_videos:
         vid = read_video(vpath, gray=True, num_frames=100)
         pts, _ = func(vid, **kw)
-        ts_desc.append(compute_descriptors(vid, pts))
-        ts_labels.append(label_map[action])
-    loaded[key] = dict(tr_desc=tr_desc, ts_desc=ts_desc, tr_labels=tr_labels, ts_labels=ts_labels)
+        desc_test.append(compute_descriptors(vid, pts))
+        test_labels.append(label_map[action])
+    loaded[key] = dict(desc_train=desc_train, desc_test=desc_test, train_labels=train_labels, test_labels=test_labels)
     with open(path, 'wb') as fh:
         pickle.dump(loaded[key], fh)
     return loaded[key]
@@ -359,9 +359,9 @@ acc_rows = []
 
 for det_name, det_func, det_kw, desc_type, K in experiments:
     c = _get_descriptors(det_name, det_func, det_kw)
-    tr, ts = c['tr_desc'], c['ts_desc']
-    train_labels = np.array(c['tr_labels'])
-    test_labels  = np.array(c['ts_labels'])
+    tr, ts = c['desc_train'], c['desc_test']
+    train_labels = np.array(c['train_labels'])
+    test_labels  = np.array(c['test_labels'])
 
     if desc_type == 'HOG':
         tr, ts = [d[:, :72] for d in tr], [d[:, :72] for d in ts]
@@ -379,9 +379,16 @@ for det_name, det_func, det_kw, desc_type, K in experiments:
     print(f"{det_name:<15} {sigma:<4} {tau:<5} {thresh:<6} {top_n:<6} {desc_type:<10} {K:<6} {acc:.2%}")
     acc_rows.append((det_name, det_kw, desc_type, K, acc))
 
-print("\n=== Best accuracy per detector ===")
+print("\n=== Best accuracy + GIFs per detector ===")
+det_func_map = {'harris': harris_detector, 'gabor': gabor_detector}
 for name in ['harris', 'gabor']:
     rows = [r for r in acc_rows if r[0] == name]
-    if rows:
-        best = max(rows, key=lambda r: r[4])
-        print(f"  {name}: σ={best[1]['sigma']} τ={best[1]['tau']} thr={best[1]['thresh']} desc={best[2]} K={best[3]} → {best[4]:.2%}")
+
+    best_det, best_kw, best_desc, best_K, best_acc = max(rows, key=lambda r: r[4])
+    print(f"  {name}: σ={best_kw['sigma']} τ={best_kw['tau']} thr={best_kw['thresh']} desc={best_desc} K={best_K} → {best_acc:.2%}")
+    for s_action, s_path in sample_videos.items():
+        s_video = read_video(s_path, gray=True, num_frames=50)
+        s_pts, _ = det_func_map[name](s_video, **best_kw)
+        gif_path = os.path.join(results_dir, f"{s_action}_{name}_best.gif")
+        _save_gif(s_video, s_pts, gif_path)
+        print(f"  Saved {os.path.basename(gif_path)}")

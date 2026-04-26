@@ -17,13 +17,13 @@
 \contentsline {subsubsection}{\numberline {2.3.2}Κατασκευή Λεξιλογίου visual words}{28}{subsubsection.2.3.2}%
 \contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{28}{subsubsection.2.3.3}%
 \contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{29}{subsubsection.2.3.4}%
-\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{32}{section.3}%
-\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{32}{subsection.3.1}%
-\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{32}{subsubsection.3.1.1}%
-\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{32}{subsubsection.3.1.2}%
-\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{32}{subsubsection.3.1.3}%
-\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{32}{subsection.3.2}%
-\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{32}{subsubsection.3.2.1}%
-\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{32}{subsubsection.3.2.2}%
-\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{32}{subsubsection.3.2.3}%
-\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{32}{subsubsection.3.2.4}%
+\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{31}{section.3}%
+\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{31}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{31}{subsubsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{31}{subsubsection.3.1.2}%
+\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{31}{subsubsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{31}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{31}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{31}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{31}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{31}{subsubsection.3.2.4}%
