@@ -2,70 +2,182 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
-\ProvideDocumentCommand \xpg@aux {mm}{}
-\@writefile{toc}{\xpg@aux {}{greek}}
-\citation{laptev2008}
-\citation{laptev2003}
+\@writefile{toc}{\xpginauxfiletrue }
+\@writefile{lof}{\xpginauxfiletrue }
+\@writefile{lot}{\xpginauxfiletrue }
+\@writefile{toc}{\selectlanguage *{greek}}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Παρακολούθηση Προσώπου και Χεριών με Χρήση της Μεθόδου Οπτικής Ροής των Lucas-Kanade}{3}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Υλοποίηση του Αλγορίθμου των Lucas-Kanade}{3}{subsection.1.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}{3}{subsection.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Πολυ-Κλιμακωτός Υπολογισμός Οπτικής Ροής}{3}{subsection.1.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}{3}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Χωρο-χρονικά Σημεία Ενδιαφέροντος}{3}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.1}Ανιχνευτής Harris3D}{3}{subsubsection.2.1.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \xpg@aux {}{greek}Σύγκριση 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking" (KTH). Αριστερά: ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα, υφές και γωνίες φόντου, σε διαφορετικές χωρικές κλίμακες. Δεξιά: ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις περιοχή των άκρων που αφορά τον βηματσμό, φιλτράροντας ανενεργές περιοχές του φόντου.}}{4}{figure.caption.1}\protected@file@percent }
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Αποτελέσματα sanity check: σύγκριση Uni-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt  {rho=5} και \texttt  {epsilon=0.001}}}{6}{table.caption.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:harris_comparison}{{1}{4}{\xpg@aux {\xpg@current@opts }{\languagename }Σύγκριση 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking" (KTH). Αριστερά: ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα, υφές και γωνίες φόντου, σε διαφορετικές χωρικές κλίμακες. Δεξιά: ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις περιοχή των άκρων που αφορά τον βηματσμό, φιλτράροντας ανενεργές περιοχές του φόντου}{figure.caption.1}{}}
+\newlabel{table:sanity_check}{{1}{6}{Αποτελέσματα sanity check: σύγκριση Uni-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt {rho=5} και \texttt {epsilon=0.001}}{table.caption.1}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt  {rho=5} και \texttt  {epsilon=0.01}}}{7}{table.caption.2}\protected@file@percent }
+\newlabel{table:sanity_check_2}{{2}{7}{Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt {rho=5} και \texttt {epsilon=0.01}}{table.caption.2}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt  {rho=3} και \texttt  {epsilon=0.01}}}{7}{table.caption.3}\protected@file@percent }
+\newlabel{table:sanity_check_3}{{3}{7}{Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt {rho=3} και \texttt {epsilon=0.01}}{table.caption.3}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt  {rho=1} και \texttt  {epsilon=0.1}}}{8}{table.caption.4}\protected@file@percent }
+\newlabel{table:sanity_check_4}{{4}{8}{Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(1, 1)$ για \texttt {rho=1} και \texttt {epsilon=0.1}}{table.caption.4}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(3, 3)$ για \texttt  {rho=5} και \texttt  {epsilon=0.001}}}{8}{table.caption.5}\protected@file@percent }
+\newlabel{table:sanity_check_5}{{5}{8}{Αποτελέσματα sanity check: Uni-scale LK με αναμενόμενη μετατόπιση $(3, 3)$ για \texttt {rho=5} και \texttt {epsilon=0.001}}{table.caption.5}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Επιλεγμένα πλέγματα σύγκρισης οπτικής ροής για διαδοχικά καρέ. Σε κάθε πλέγμα φαίνονται τα crops των τριών περιοχών, τα ανιχνευμένα features, καθώς και τα quiver plots των Lucas-Kanade(ρ=5, ε=0.001) και TV-L1.}}{9}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:flow_grids_a}{{1}{9}{Επιλεγμένα πλέγματα σύγκρισης οπτικής ροής για διαδοχικά καρέ. Σε κάθε πλέγμα φαίνονται τα crops των τριών περιοχών, τα ανιχνευμένα features, καθώς και τα quiver plots των Lucas-Kanade(ρ=5, ε=0.001) και TV-L1}{figure.caption.6}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Πρόσθετα παραδείγματα από ενδιάμεσες χρονικές στιγμές, όπου φαίνονται οι διαφορές στη δομή και στο μέγεθος των διανυσμάτων μεταξύ των δύο μεθόδων.}}{10}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:flow_grids_b}{{2}{10}{Πρόσθετα παραδείγματα από ενδιάμεσες χρονικές στιγμές, όπου φαίνονται οι διαφορές στη δομή και στο μέγεθος των διανυσμάτων μεταξύ των δύο μεθόδων}{figure.caption.7}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Παράδειγμα από τα τελευταία καρέ της ακολουθίας, όπου η σύγκριση Lucas-Kanade και TV-L1 παραμένει άμεσα ορατή μέσα από τα αντίστοιχα quiver plots.}}{10}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:flow_grids_c}{{3}{10}{Παράδειγμα από τα τελευταία καρέ της ακολουθίας, όπου η σύγκριση Lucas-Kanade και TV-L1 παραμένει άμεσα ορατή μέσα από τα αντίστοιχα quiver plots}{figure.caption.8}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Παράδειγμα για ρ=1, ε=0.1.}}{11}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:flow_grids_rho_1}{{4}{11}{Παράδειγμα για ρ=1, ε=0.1}{figure.caption.9}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Παράδειγμα για ρ=1, ε=0.1.}}{11}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:flow_grids_rho_1_2}{{5}{11}{Παράδειγμα για ρ=1, ε=0.1}{figure.caption.10}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Παράδειγμα για ρ=10, ε=0.001.}}{12}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:flow_grids_rho_10_1}{{6}{12}{Παράδειγμα για ρ=10, ε=0.001}{figure.caption.11}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Παράδειγμα για ρ=10, ε=0.001.}}{12}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:flow_grids_rho_10_2}{{7}{12}{Παράδειγμα για ρ=10, ε=0.001}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}{13}{subsection.1.2}\protected@file@percent }
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Αποτελέσματα sanity check για τη συνάρτηση \texttt  {displ()}: σύγκριση Uni-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt  {rho=5} και \texttt  {epsilon=0.001} και threshold ενέργειας 5}}{14}{table.caption.13}\protected@file@percent }
+\newlabel{table:displ_sanity_check}{{6}{14}{Αποτελέσματα sanity check για τη συνάρτηση \texttt {displ()}: σύγκριση Uni-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt {rho=5} και \texttt {epsilon=0.001} και threshold ενέργειας 5}{table.caption.13}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Επιπλέον αποτελέσματα sanity check για τη συνάρτηση \texttt  {displ()}: σύγκριση Uni-scale LK, Multi-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt  {rho=10} και \texttt  {epsilon=0.001} και threshold ενέργειας 5}}{14}{table.caption.14}\protected@file@percent }
+\newlabel{table:displ_sanity_check_2}{{7}{14}{Επιπλέον αποτελέσματα sanity check για τη συνάρτηση \texttt {displ()}: σύγκριση Uni-scale LK, Multi-scale LK και TV-L1 με αναμενόμενη μετατόπιση $(1, 1)$ με \texttt {rho=10} και \texttt {epsilon=0.001} και threshold ενέργειας 5}{table.caption.14}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Παράδειγμα για ρ=1, ε=0.1 κατώφλι 0.1 .}}{15}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{8}{15}{Παράδειγμα για ρ=1, ε=0.1 κατώφλι 0.1 }{figure.caption.15}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Παράδειγμα για ρ=1, ε=0.1 κατώφλι 0.1 .}}{15}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{9}{15}{Παράδειγμα για ρ=1, ε=0.1 κατώφλι 0.1 }{figure.caption.16}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 .}}{16}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{10}{16}{Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 }{figure.caption.17}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 .}}{16}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{11}{16}{Παράδειγμα για ρ=5, ε=0.001 κατώφλι 1 }{figure.caption.18}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 .}}{17}{figure.caption.19}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{12}{17}{Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 }{figure.caption.19}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 .}}{17}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:flow_grids1}{{13}{17}{Παράδειγμα για ρ=10, ε=0.001 κατώφλι 10 }{figure.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Πολυ-Κλιμακωτός Υπολογισμός Οπτικής Ροής}{17}{subsection.1.3}\protected@file@percent }
 \citation{laptev2008}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.2}Ανιχνευτής Gabor}{5}{subsubsection.2.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.3}Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}{6}{subsubsection.2.1.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.4}Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}{6}{subsubsection.2.1.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \xpg@aux {}{greek}Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος.}}{7}{figure.caption.2}\protected@file@percent }
-\newlabel{fig:harris_det_walking}{{2}{7}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \xpg@aux {}{greek}Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{7}{figure.caption.3}\protected@file@percent }
-\newlabel{fig:harris_H_walking}{{3}{7}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \xpg@aux {}{greek}Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος.}}{7}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:gabor_det_walking}{{4}{7}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces \xpg@aux {}{greek}Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{7}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:gabor_H_walking}{{5}{7}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces \xpg@aux {}{greek}Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος.}}{8}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:harris_det_running}{{6}{8}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces \xpg@aux {}{greek}Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{8}{figure.caption.7}\protected@file@percent }
-\newlabel{fig:harris_H_running}{{7}{8}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces \xpg@aux {}{greek}Gabor - running: εντοπισμένα σημεία ενδιαφέροντος.}}{8}{figure.caption.8}\protected@file@percent }
-\newlabel{fig:gabor_det_running}{{8}{8}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - running: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces \xpg@aux {}{greek}Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{8}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:gabor_H_running}{{9}{8}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.9}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces \xpg@aux {}{greek}Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}}{9}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:harris_det_handclapping}{{10}{9}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.10}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces \xpg@aux {}{greek}Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{9}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:harris_H_handclapping}{{11}{9}{\xpg@aux {\xpg@current@opts }{\languagename }Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.11}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces \xpg@aux {}{greek}Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}}{9}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:gabor_det_handclapping}{{12}{9}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.12}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces \xpg@aux {}{greek}Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{9}{figure.caption.13}\protected@file@percent }
-\newlabel{fig:gabor_H_handclapping}{{13}{9}{\xpg@aux {\xpg@current@opts }{\languagename }Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.13}{}}
+\citation{laptev2003}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}{18}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Χωρο-χρονικά Σημεία Ενδιαφέροντος}{18}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.1}Ανιχνευτής Harris3D}{18}{subsubsection.2.1.1}\protected@file@percent }
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Σύγκριση 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking" (KTH). Αριστερά: ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα, υφές και γωνίες φόντου, σε διαφορετικές χωρικές κλίμακες. Δεξιά: ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις περιοχή των άκρων που αφορά τον βηματσμό, φιλτράροντας ανενεργές περιοχές του φόντου.}}{19}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:harris_comparison}{{14}{19}{Σύγκριση 2D Harris-Laplacian και Harris3D σε καρέ από βίντεο "walking" (KTH). Αριστερά: ο 2D ανιχνευτής εντοπίζει αφθονία γωνιών σε όλο το πλαίσιο: περιγράμματα, υφές και γωνίες φόντου, σε διαφορετικές χωρικές κλίμακες. Δεξιά: ο Harris3D επιλέγει πιο εστιασμένα σημεία, κυρίως στις περιοχή των άκρων που αφορά τον βηματσμό, φιλτράροντας ανενεργές περιοχές του φόντου}{figure.caption.21}{}}
 \citation{laptev2008}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}{10}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Υπολογισμός Gradient και Οπτικής Ροής}{11}{subsubsection.2.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Εξαγωγή HOG/HOF Περιγραφητών}{11}{subsubsection.2.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Κατασκευή Bag of Visual Words και Ταξινόμηση με SVM}{12}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Διαχωρισμός Συνόλου Δεδομένων}{12}{subsubsection.2.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.2}Κατασκευή Λεξιλογίου visual words}{13}{subsubsection.2.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{13}{subsubsection.2.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{14}{subsubsection.2.3.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces \xpg@aux {}{greek}Αποτελέσματα πειραμάτων. Ακρίβεια ταξινόμησης στο σύνολο ελέγχου (12 βίντεο). Βέλτιστες τιμές επισημαίνονται με \textbf  {έντονη γραφή}.}}{15}{table.caption.14}\protected@file@percent }
-\newlabel{tab:results}{{1}{15}{\xpg@aux {\xpg@current@opts }{\languagename }Αποτελέσματα πειραμάτων. Ακρίβεια ταξινόμησης στο σύνολο ελέγχου (12 βίντεο). Βέλτιστες τιμές επισημαίνονται με \textbf {έντονη γραφή}}{table.caption.14}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.2}Ανιχνευτής Gabor}{20}{subsubsection.2.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.3}Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}{21}{subsubsection.2.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.1.4}Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}{21}{subsubsection.2.1.4}\protected@file@percent }
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος.}}{22}{figure.caption.22}\protected@file@percent }
+\newlabel{fig:harris_det_walking}{{15}{22}{Harris3D - walking: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.22}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{22}{figure.caption.23}\protected@file@percent }
+\newlabel{fig:harris_H_walking}{{16}{22}{Harris3D - walking: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.23}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος.}}{22}{figure.caption.24}\protected@file@percent }
+\newlabel{fig:gabor_det_walking}{{17}{22}{Gabor - walking: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.24}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{22}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:gabor_H_walking}{{18}{22}{Gabor - walking: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.25}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος.}}{23}{figure.caption.26}\protected@file@percent }
+\newlabel{fig:harris_det_running}{{19}{23}{Harris3D - running: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.26}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{23}{figure.caption.27}\protected@file@percent }
+\newlabel{fig:harris_H_running}{{20}{23}{Harris3D - running: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.27}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {21}{\ignorespaces Gabor - running: εντοπισμένα σημεία ενδιαφέροντος.}}{23}{figure.caption.28}\protected@file@percent }
+\newlabel{fig:gabor_det_running}{{21}{23}{Gabor - running: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.28}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {22}{\ignorespaces Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{23}{figure.caption.29}\protected@file@percent }
+\newlabel{fig:gabor_H_running}{{22}{23}{Gabor - running: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.29}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {23}{\ignorespaces Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}}{24}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:harris_det_handclapping}{{23}{24}{Harris3D - handclapping: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.30}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {24}{\ignorespaces Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit  {hot}).}}{24}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:harris_H_handclapping}{{24}{24}{Harris3D - handclapping: χάρτης απόκρισης $H$ (κλίμακα \textit {hot})}{figure.caption.31}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {25}{\ignorespaces Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος.}}{24}{figure.caption.32}\protected@file@percent }
+\newlabel{fig:gabor_det_handclapping}{{25}{24}{Gabor - handclapping: εντοπισμένα σημεία ενδιαφέροντος}{figure.caption.32}{}}
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lof}{\contentsline {figure}{\numberline {26}{\ignorespaces Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit  {hot}).}}{24}{figure.caption.33}\protected@file@percent }
+\newlabel{fig:gabor_H_handclapping}{{26}{24}{Gabor - handclapping: χάρτης ενέργειας $H$ (κλίμακα \textit {hot})}{figure.caption.33}{}}
+\citation{laptev2008}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}{25}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Υπολογισμός Gradient και Οπτικής Ροής}{26}{subsubsection.2.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Εξαγωγή HOG/HOF Περιγραφητών}{26}{subsubsection.2.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Κατασκευή Bag of Visual Words και Ταξινόμηση με SVM}{27}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Διαχωρισμός Συνόλου Δεδομένων}{27}{subsubsection.2.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.2}Κατασκευή Λεξιλογίου visual words}{28}{subsubsection.2.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{28}{subsubsection.2.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{29}{subsubsection.2.3.4}\protected@file@percent }
+\@writefile{lof}{\setforeignlanguage {greek}}
+\@writefile{lot}{\setforeignlanguage {greek}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Αποτελέσματα πειραμάτων. Ακρίβεια ταξινόμησης στο σύνολο ελέγχου (12 βίντεο). Βέλτιστες τιμές επισημαίνονται με \textbf  {έντονη γραφή}.}}{30}{table.caption.34}\protected@file@percent }
+\newlabel{tab:results}{{8}{30}{Αποτελέσματα πειραμάτων. Ακρίβεια ταξινόμησης στο σύνολο ελέγχου (12 βίντεο). Βέλτιστες τιμές επισημαίνονται με \textbf {έντονη γραφή}}{table.caption.34}{}}
 \bibcite{laptev2008}{1}
 \bibcite{laptev2003}{2}
-\@writefile{toc}{\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{17}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{17}{subsection.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{17}{subsubsection.3.1.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{17}{subsubsection.3.1.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{17}{subsubsection.3.1.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{17}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{17}{subsubsection.3.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{17}{subsubsection.3.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{17}{subsubsection.3.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{17}{subsubsection.3.2.4}\protected@file@percent }
-\xdef \mintedoldcachechecksum{\detokenize{\minted@cachechecksum }}
-\gdef \@abspage@last{18}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{32}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{32}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{32}{subsubsection.3.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{32}{subsubsection.3.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{32}{subsubsection.3.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{32}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{32}{subsubsection.3.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{32}{subsubsection.3.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{32}{subsubsection.3.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{32}{subsubsection.3.2.4}\protected@file@percent }
+\@writefile{toc}{\xpginauxfilefalse }
+\@writefile{lof}{\xpginauxfilefalse }
+\@writefile{lot}{\xpginauxfilefalse }
+\gdef \@abspage@last{33}

@@ -1,0 +1,25 @@
+ONLY 4 FRAMES PER VIDEO 
+
+=== 3.2.4  Comparison ===
+
+  Method                               Test Accuracy
+  ----------------------------------- --------------
+  MobileNet_v3_small + Linear SVM             94.61%
+  x3d_xs + Linear SVM                         97.01%
+
+
+  AVG OF ALL 4 FRAMES IN VIDEO 
+    Method                               Test Accuracy
+  ----------------------------------- --------------
+  MobileNet_v3_small + Linear SVM             94.61%
+  x3d_xs + Linear SVM                         98.80%
+
+
+  === 3.2.4  Comparison ===
+
+  Method                        SVM        MLP
+  ---------------------- ---------- ----------
+  Frozen MobileNet           98.80%     97.60%
+  LoRA MobileNet             98.80%     97.60%
+  Frozen x3d_xs              99.40%     98.80%
+  LoRA x3d_xs                99.40%     99.40%

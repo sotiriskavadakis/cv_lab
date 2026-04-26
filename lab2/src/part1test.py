@@ -139,7 +139,7 @@ def lk(I1, I2, features, rho, epsilon, d_x0, d_y0):
 # ── LK vs TV-L1: norm error over all consecutive frame pairs ─────────────────
 if __name__ == '__main__':
     NUM_FRAMES = 2
-    tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create()
+    tvl1_estimator = cv2.optflow.createOptFlow_DualTVL1()
 
     # per-box list that will collect the mean norm error of each frame pair
     frame_errors = {name: [] for name in BOUNDING_BOXES}
