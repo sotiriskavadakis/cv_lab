@@ -117,7 +117,7 @@ def lk(I1, I2, features, rho, epsilon, d_x0, d_y0):
     #we return the final displacements for the features , but these are not the real one we will have to take the negative of them 
     #since they represent the movement from I2 to I1 since as we will se in the main code
     #we compute the features in the I2 image while we want the movement from I1 to I2 for the tracking of the objects in the video
-    return d_x, d_y
+    return d_x, d_y , d_x_img, d_y_img #we return also the dense dispacement for the multiscale version as we have to put the dense result as initialization to the next finr level
 
 
 def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
@@ -132,75 +132,98 @@ def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
     Parameters mirror lk(), plus num_scales (number of pyramid levels).
     Returns d_x, d_y at the finest (original) scale for the given features.
     """
-    # ── 1. Build Gaussian pyramids (index 0 = finest, index -1 = coarsest) ──
+    #here we will build the gaussian pyramids of the two images in order to start from a very coarse version
+    #and progressively refine the optical flow at larger resolutions
+    #index 0 is the original image and index -1 will be the coarsest-smallest level
     pyramid1 = [I1]
     pyramid2 = [I2]
     for _ in range(num_scales - 1):
-        # Blur with sigma=3 before downsampling to avoid aliasing
+        #before downsampling we blur the image in order to avoid aliasing effects
+        #so we apply a gaussian blur with a standard deviation of 3 which is a common choice for anti-aliasing before downsampling
         blurred1 = cv2.GaussianBlur(pyramid1[-1], (0, 0), sigmaX=3, sigmaY=3)
         blurred2 = cv2.GaussianBlur(pyramid2[-1], (0, 0), sigmaX=3, sigmaY=3)
+        #we downsample by a factor of 2 each time so the next level is half the size of the previous one
         pyramid1.append(blurred1[::2, ::2])
         pyramid2.append(blurred2[::2, ::2])
 
-    # ── 2. Initialise dense d map at coarsest scale (scalar → uniform map) ───
-    H_c, W_c = pyramid1[-1].shape[:2]
+    #we initialize the displacement maps at the coarsest scale
+    #the initial displacement is scalar usually zero and we create a uniform map for the whole image as we were doing in the simple lk
+    #we divide by the total scale factor because at the coarsest image the displacement should be divided accordingly to the number of scales
+    #since the motion in the coarsest level is smaller by a factor of 2^(num_scales-1) compared to the original scale, we have to divide the initial displacement by this factor to get the correct initial condition for the coarsest level
+    H_c, W_c = pyramid1[-1].shape[:2] 
     scale_factor = 2 ** (num_scales - 1)
-    d_x_map = np.full((H_c, W_c), d_x0 / scale_factor)
+    d_x_map = np.full((H_c, W_c), d_x0 / scale_factor)#so we create a map of displacementes for all pixels at the coarest level
     d_y_map = np.full((H_c, W_c), d_y0 / scale_factor)
 
-    # ── 3. Coarse-to-fine refinement ─────────────────────────────────────────
+    #now we start the coarse to fine refinement
+    #we begin from the coarsest level and we move towards the original resolution
     for level in range(num_scales - 1, -1, -1):
         I1_level = pyramid1[level]
         I2_level = pyramid2[level]
         scale     = 2 ** level
 
-        # Scale features to this pyramid level
+        #the features were originally computed in the full resolution image I2
+        #so for each pyramid level we have to scale them down accordingly in order to refer to the correct positions in that level
         features_level = features / scale
         H_l, W_l = I1_level.shape[:2]
+        #we clip them in order to ensure that no feature lies outside the image boundaries of the current level
         features_level[:, 0] = np.clip(features_level[:, 0], 0, W_l - 1)
         features_level[:, 1] = np.clip(features_level[:, 1], 0, H_l - 1)
 
-        # Pass the full 2D displacement map as initial condition
-        dx_level, dy_level = lk(
+        #we now run the simple lk at the current scale
+        #instead of starting from zero each time we pass as initial condition the dense displacement map computed from the coarser level
+        #this is the key idea of multiscale lucas kanade because the coarse level gives a good initial guess for the finer level
+        dx_level, dy_level , d_x_map, d_y_map = lk( #we return both the dense map in order to use it as initialization to the next level and the feature displacements at the current level that we need to compute for the motion of the object
             I1_level, I2_level,
             features_level,
             rho, epsilon,
-            d_x_map, d_y_map      # 2D maps — lk() resizes if needed
+            d_x_map, d_y_map      # 2D maps that is we built lk so that it can handels 2d initialization
         )
 
-        # Double d map and upsample when moving to the next finer level
+        #if we are not yet at the finest level we have to move to the next finer image
+        #in order to do that we upsample the dense displacement maps and then multiply by 2
+        #because one pixel motion in the coarse image corresponds to two pixels motion in the next finer image
         if level > 0:
-            H_next, W_next = pyramid1[level - 1].shape[:2]
+            H_next, W_next = pyramid1[level - 1].shape[:2]#we get the dimensions of the next finer image
 
-            x_next, y_next = np.meshgrid(np.arange(W_next), np.arange(H_next))
-            x_coarse = x_next / 2.0
-            y_coarse = y_next / 2.0
+            #build the coordinates of the next finer image
+            # x_next, y_next = np.meshgrid(np.arange(W_next), np.arange(H_next))
+            # #map these coordinates back to the coarse grid in order to interpolate the displacement maps
+            # x_coarse = x_next / 2.0
+            # y_coarse = y_next / 2.0
 
-            d_x_map = map_coordinates(
-                d_x_map,
-                [np.ravel(y_coarse), np.ravel(x_coarse)],
-                order=1, mode='nearest'
-            ).reshape(H_next, W_next)
+            # #interpolate the dense dx map from the coarse level to the finer level
+            # d_x_map = map_coordinates(
+            #     d_x_map,
+            #     [np.ravel(y_coarse), np.ravel(x_coarse)],
+            #     order=1, mode='nearest'
+            # ).reshape(H_next, W_next)#map to next level
 
-            d_y_map = map_coordinates(
-                d_y_map,
-                [np.ravel(y_coarse), np.ravel(x_coarse)],
-                order=1, mode='nearest'
-            ).reshape(H_next, W_next)
+            # #interpolate similarly the dense dy map
+            # d_y_map = map_coordinates(
+            #     d_y_map,
+            #     [np.ravel(y_coarse), np.ravel(x_coarse)],
+            #     order=1, mode='nearest'
+            # ).reshape(H_next, W_next)
+     
+            # #after interpolation we multiply by 2 to express the motion in the coordinate system of the finer level
+            # d_x_map *= 2.0
+            # d_y_map *= 2.0
 
-            d_x_map *= 2.0
-            d_y_map *= 2.0
+            d_x_map = cv2.resize(d_x_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
+            d_y_map = cv2.resize(d_y_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
         else:
-            # At finest level: update map at feature locations for completeness
+            #at the finest level for completeness we store the final per-feature displacements back into the dense maps
             H_l, W_l = I1_level.shape[:2]
             fi = np.clip(features_level[:, 0].astype(int), 0, W_l - 1)
             fj = np.clip(features_level[:, 1].astype(int), 0, H_l - 1)
             d_x_map[fj, fi] = dx_level
             d_y_map[fj, fi] = dy_level
 
+    #finally we return the displacements of the features at the finest original scale
     return dx_level, dy_level
 
-
+#ENERGY MASK+MEDIAN APPROACH FOR DISPLACEMENT COMPUTATION
 def displ(d_x, d_y):
         """
         in order to compute the total displacement of the bounding box from the different displacements of the features , 
@@ -213,55 +236,68 @@ def displ(d_x, d_y):
         in order to deal with remaining outliers and that was the total displacement of the box
         Falls back to plain mean if no feature survives the threshold.
         """
-        energy_threshold=5
+        energy_threshold=1
         energy = d_x ** 2 + d_y ** 2
         mask = energy > energy_threshold
         if mask.sum() > 0: #if there are surviving features
             return np.median(d_x[mask]), np.median(d_y[mask])#apply the mask so we keep only the displacemenets with a hiigh energy and then compute the median fo them
-        #in case no survivng features we just return the mean of all displacements without applying any mask
+#         #in case no survivng features we just return the mean of all displacements without applying any mask
         return np.median(d_x), np.median(d_y)
 
-# ── Synthetic test: I2 = I1 shifted by (1, 1) — expected output dx≈1, dy≈1 ───
+#ALTERNATIVE MEAN APPROACH FOR DISPLACEMENT COMPUTATION WITH ENERGY MASK+MEAN
+# def displ(d_x, d_y):
+      
+#       energy_threshold = 1
+#       energy = d_x ** 2 + d_y ** 2
+#       mask = energy > energy_threshold
+
+#       if mask.sum() > 0:
+#           return np.mean(d_x[mask]), np.mean(d_y[mask])
+
+#       return np.mean(d_x), np.mean(d_y)
+# Synthetic test: I2 = I1 shifted by (1, 1) — expected output dx=1, dy=1 
 if __name__ == '__main__':
     from scipy.ndimage import shift as ndimage_shift
-    tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)
+    tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)#tvl 
 
     I1 = cv2.imread(os.path.join(DATA_DIR, '1.png'), cv2.IMREAD_GRAYSCALE)
-
-    # Create I2 by shifting I1 by exactly +1 pixel in x (col) and +1 pixel in y (row)
-    # ndimage_shift(image, [shift_row, shift_col])
+    
+    #Create I2 by shifting I1 by exactly +1 pixel in x (col) and +1 pixel in y (row)
     shft_y, shft_x = 1.0, 1.0
     shift=[shft_y, shft_x]
     I2 = ndimage_shift(I1.astype(np.float64), shift=shift, mode='nearest').astype(np.uint8)
-    
+    #we run the lk for all boxes in the cropped images
+    print('Sanity check on synthetic shift (I2 = I1 shifted by (1, 1))')
     for name, (x, y, w, h) in BOUNDING_BOXES.items():
         crop_I1 = I1[y:y+h, x:x+w]
-        crop_I2 = I2[y:y+h, x:x+w]
+        crop_I2 = I2[y:y+h, x:x+w]#cropped pathces
 
-        pts = cv2.goodFeaturesToTrack(crop_I2, maxCorners=200,
+        pts = cv2.goodFeaturesToTrack(crop_I2, maxCorners=200, #feature detection in I2
                                       qualityLevel=0.01, minDistance=5)
         
 
-        features = pts.reshape(-1, 2)        # (N, 2)  (col, row)
+        features = pts.reshape(-1, 2)        #reshape for our lk function
 
-        d_x_lk, d_y_lk = lk(crop_I1, crop_I2, features,
+        d_x_lk, d_y_lk, _, _ = lk(crop_I1, crop_I2, features, #dx dy of lk
                                rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
-        displacement_x, displacement_y = displ(-d_x_lk, -d_y_lk)  # Αντιστροφή για να ταιριάζει με την κατεύθυνση της μετατόπισης
-        d_x_mlk, d_y_mlk = lk_multiscale(crop_I1, crop_I2, features,
+        displacement_x, displacement_y = displ(-d_x_lk, -d_y_lk)  #real displacements are the negtive of the ones computed because  we find the featres in I2
+        d_x_mlk, d_y_mlk = lk_multiscale(crop_I1, crop_I2, features, #same for multiscale lk
                                         rho=5, epsilon=0.001, d_x0=0.0, d_y0=0.0, num_scales=3)
         displacement_x_mlk, displacement_y_mlk = displ(-d_x_mlk, -d_y_mlk)
     
-        lk_dx = -d_x_lk  # Αντιστροφή πρόσημου για να ταιριάζει με την κατεύθυνση της μετατόπισης
+        lk_dx = -d_x_lk  # engative displacements
         lk_dy = -d_y_lk
         mlk_dx = -d_x_mlk
         mlk_dy = -d_y_mlk
-        flow = tvl1_estimator.calc(crop_I1, crop_I2, None)  # (H, W, 2)
+        flow = tvl1_estimator.calc(crop_I2, crop_I1, None)  # (H, W, 2) #again we keep the right order for i1 i2 based on where the features are computed
         fx = np.clip(features[:, 0].astype(int), 0, crop_I1.shape[1] - 1)
         fy = np.clip(features[:, 1].astype(int), 0, crop_I1.shape[0] - 1)
         tvl1_dx = flow[fy, fx, 0]   # (N,)
         tvl1_dy = flow[fy, fx, 1]   # (N,)
+        tvl1_dx = -tvl1_dx  #for the same reason revert the sign of the displacements as we did for lk and mlk
+        tvl1_dy = -tvl1_dy  
         displacement_x_tvl1, displacement_y_tvl1 = displ(tvl1_dx, tvl1_dy)
-
+       #results for our sanity check
         print(f'{name}:')
         print(f'  features      : {len(lk_dx)}')
         print(f' Uni scale LK ')
@@ -276,13 +312,15 @@ if __name__ == '__main__':
         print(f'  TV-L1 mean d_x = {tvl1_dx.mean():.4f}  (expected  {shft_x:.1f})')
         print(f'  TV-L1 mean d_y = {tvl1_dy.mean():.4f}  (expected  {shft_y:.1f})')
         print(f' diplacement: dx = {displacement_x_tvl1:.4f}  dy = {displacement_y_tvl1:.4f}  (expected {shft_x:.1f}, {shft_y:.1f})')
-    # ── Grid plots: I1 + features | I2 + features | optical flow ─────────────
-    print('\n── Grid plots ──')
+    
+    
+    #  Grid plots: I1 + features | I2 + features | optical flow LK | optical flow TV-L1 for all the frames 
     frame_files = sorted(
          [f for f in os.listdir(DATA_DIR) if f.endswith('.png')],
          key=lambda f: int(os.path.splitext(f)[0])
      )
     NUM_FRAMES = len(frame_files)
+    print('\nGrid plots: I1 + features | I2 + features | optical flow LK | optical flow TV-L1 for all the frames')
 
     # tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)
 
@@ -290,7 +328,7 @@ if __name__ == '__main__':
     #     f1 = cv2.imread(os.path.join(DATA_DIR, frame_files[idx]),     cv2.IMREAD_GRAYSCALE)
     #     f2 = cv2.imread(os.path.join(DATA_DIR, frame_files[idx + 1]), cv2.IMREAD_GRAYSCALE)
 
-    #     # 3 bounding boxes × 4 columns (I1 | I2+pts | LK flow | TV-L1 flow)
+    #     #3 bounding boxes × 4 columns (I1 | I2+pts | LK flow | TV-L1 flow)
     #     fig, axes = plt.subplots(3, 4, figsize=(15, 10), constrained_layout=True)
     #     fig.suptitle(f'Optical flow comparison — frames {idx+1} to {idx+2}', fontsize=12)
 
@@ -306,12 +344,12 @@ if __name__ == '__main__':
     #         pts = cv2.goodFeaturesToTrack(crop2, maxCorners=200,
     #                                        qualityLevel=0.01, minDistance=5)
 
-    #         # ── column 0: I1 ───────────────────────────────────────────────────
+    #         #column 0: I1
     #         axes[row, 0].imshow(crop1, cmap='gray', origin='upper')
     #         axes[row, 0].set_ylabel(name, fontsize=9)
     #         axes[row, 0].axis('off')
 
-    #         # ── column 1: I2 with detected feature points ─────────────────────
+    #         #column 1: I2 with detected feature points
     #         axes[row, 1].imshow(crop2, cmap='gray', origin='upper')
     #         if pts is not None:
     #             features = pts.reshape(-1, 2)
@@ -320,23 +358,23 @@ if __name__ == '__main__':
     #                                  edgecolors='black', linewidths=0.3)
     #         axes[row, 1].axis('off')
 
-    #         # ── column 2: Lucas-Kanade quiver without image background ────────
+    #         #column 2: Lucas-Kanade quiver without image background
     #         axes[row, 2].set_xlim(0, w)
     #         axes[row, 2].set_ylim(h, 0)
     #         axes[row, 2].set_aspect('equal')
     #         axes[row, 2].axis('off')
     #         if pts is not None:
     #             features = pts.reshape(-1, 2)
-    #             d_x, d_y = lk(crop1, crop2, features,
+    #             d_x, d_y, _, _ = lk(crop1, crop2, features,
     #                           rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
-    #             axes[row, 2].quiver(
+    #             axes[row, 2].quiver( #visualiation with quiver plot
     #                 features[:, 0], features[:, 1],
     #                 -d_x, -d_y,
     #                 angles='xy', scale_units='xy', scale=1,
     #                 color='black', width=0.006
     #             )
 
-    #         # ── column 3: TV-L1 quiver without image background ───────────────
+    #         #column 3: TV-L1 quiver without image background
     #         axes[row, 3].set_xlim(0, w)
     #         axes[row, 3].set_ylim(h, 0)
     #         axes[row, 3].set_aspect('equal')
@@ -360,27 +398,21 @@ if __name__ == '__main__':
     #     plt.close(fig)
     #     print(f'  saved {os.path.basename(out)}')
 
-    # print(f'\nDone — {NUM_FRAMES-1} grids saved to {os.path.abspath(RESULTS_DIR)}')
 
-    # ── Section 1.1.2: Bounding-box tracking ─────────────────────────────────
-    # print('\n── Bounding-box tracking ──') 
+    #Section 1.1.2: Bounding-box tracking
+    print('\nBounding-box tracking') 
+    # One figure   per frame with all three boxes tracked together
 
-    
-
-    # One figure with all three boxes tracked together
-
-    # Initialise box state for each region
+    #Initialise box state for each region
     box_state = {name: list(map(float, bb)) for name, bb in BOUNDING_BOXES.items()}
 
-    # Get frame size from first frame
+    #Get frame size from first frame
     sample = cv2.imread(os.path.join(DATA_DIR, frame_files[0]))
     H_vid, W_vid = sample.shape[:2]
-    #out_vid = os.path.join(RESULTS_DIR, 'tracking_tvl.mp4')
+    
+    out_vid = os.path.join(RESULTS_DIR, 'tracking_mlk.mp4')
 
-    #out_vid = os.path.join(RESULTS_DIR, 'tracking_uni.mp4')
-    out_vid = os.path.join(RESULTS_DIR, 'tracking_lkr10e0_001t5.mp4')
-
-    writer = cv2.VideoWriter(
+    writer = cv2.VideoWriter(#synthesize the frames to a video
         out_vid,
         cv2.VideoWriter_fourcc(*'mp4v'),
         5,              # fps — slow enough to follow the tracking
@@ -397,7 +429,7 @@ if __name__ == '__main__':
         frame_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         vis = frame_bgr.copy()
 
-        # Draw all three boxes on the same frame
+        #Draw all three boxes on the same frame
         for name, (bx, by, bw, bh) in box_state.items():
             ix, iy, iw, ih = int(round(bx)), int(round(by)), int(round(bw)), int(round(bh))
             cv2.rectangle(vis, (ix, iy), (ix + iw, iy + ih), BOX_COLORS[name], 2)
@@ -409,41 +441,65 @@ if __name__ == '__main__':
         axes_track[idx].set_title(f'frame {idx+1}', fontsize=8)
         axes_track[idx].axis('off')
 
-        # Propagate each box to the next frame
+        #Propagate each box to the next frame
         if idx < NUM_FRAMES - 1:
             next_gray = cv2.imread(
                 os.path.join(DATA_DIR, frame_files[idx + 1]), cv2.IMREAD_GRAYSCALE
             )
             for name in list(box_state.keys()):
-                bx, by, bw, bh = box_state[name]
+                bx, by, bw, bh = box_state[name] #current box position and size
                 cx  = max(0, min(int(round(bx)), frame_gray.shape[1] - 1))
                 cy  = max(0, min(int(round(by)), frame_gray.shape[0] - 1))
                 cw  = min(int(round(bw)), frame_gray.shape[1] - cx)
                 ch  = min(int(round(bh)), frame_gray.shape[0] - cy)
-
+                #cropped images for the current frame
                 crop_I1 = frame_gray[cy:cy+ch, cx:cx+cw]
                 crop_I2 = next_gray[cy:cy+ch, cx:cx+cw]
 
                 pts = cv2.goodFeaturesToTrack(crop_I2, maxCorners=200,
                                               qualityLevel=0.01, minDistance=5)
+                if name == 'left_hand' and idx >= NUM_FRAMES - 3:
+                    num_pts = 0 if pts is None else len(pts)
+                    print(f'[debug] frame {idx+1} -> {idx+2} left_hand features: {num_pts}')
                 if pts is not None and len(pts) > 0:
                     features = pts.reshape(-1, 2)
-                    d_x, d_y = lk(crop_I1, crop_I2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
-                    #flow = tvl1_estimator.calc(crop_I1, crop_I2, None)  # (H, W, 2)
-    #               fx = np.clip(features[:, 0].astype(int), 0, crop_I1.shape[1] - 1)
-    #               fy = np.clip(features[:, 1].astype(int), 0, crop_I1.shape[0] - 1)
-    #               d_x = flow[fy, fx, 0]   # (N,)
-    #               d_y = flow[fy, fx, 1]   # (N,)
-                    #d_x, d_y = lk_multiscale(crop_I1, crop_I2, features, rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0, num_scales=4)
-                    dx_box, dy_box = displ(-d_x, -d_y)
-                    box_state[name][0] += dx_box
+
+                    #SIPLE SCALE LUCAS-KANADE APPROACH
+                    #d_x, d_y, _, _ = lk(crop_I1, crop_I2, features, rho=5, epsilon=0.001, d_x0=0.0, d_y0=0.0)
+
+                    #TVL 
+                    #flow = tvl1_estimator.calc(crop_I2, crop_I1, None)  # (H, W, 2)
+                    #TVL DENSE OPTICAL FLOW APPROACH
+                    # d_x_img = -flow[:, :, 0]
+                    # d_y_img = -flow[:, :, 1]
+                    # dx_box, dy_box = displ(d_x_img.ravel(), d_y_img.ravel())
+                    # #TVL FEATURE-BASED APPROACH
+                    # fx = np.clip(features[:, 0].astype(int), 0, crop_I1.shape[1] - 1)
+                    # fy = np.clip(features[:, 1].astype(int), 0, crop_I1.shape[0] - 1)
+                    # d_x = flow[fy, fx, 0]   # (N,)
+                    # d_y = flow[fy, fx, 1]   # (N,)
+
+                    #MULTI-SCALE LUCAS-KANADE APPROACH
+                    d_x, d_y = lk_multiscale(crop_I1, crop_I2, features, rho=5, epsilon=0.01, d_x0=0.0, d_y0=0.0, num_scales=3)
+                    dx_box, dy_box = displ(d_x, d_y)
+                    dx_box, dy_box = -dx_box, -dy_box #each box displacement
+                    box_state[name][0] += dx_box #box new position with the computed displacement
                     box_state[name][1] += dy_box
+                    if name == 'left_hand' and idx >= NUM_FRAMES - 3:
+                        print(
+                            f'[debug] frame {idx+1} -> {idx+2} left_hand '
+                            f'dx_box={dx_box:.4f} dy_box={dy_box:.4f} '
+                            f'new_box=({box_state[name][0]:.2f}, {box_state[name][1]:.2f}, '
+                            f'{box_state[name][2]:.2f}, {box_state[name][3]:.2f})'
+                        )
+                elif name == 'left_hand' and idx >= NUM_FRAMES - 3:
+                    print(f'[debug] frame {idx+1} -> {idx+2} left_hand no valid features, box unchanged')
 
     writer.release()
     print(f'  saved {os.path.basename(out_vid)}')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_tvl.jpg')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_uni.jpg')
-    out_img = os.path.join(RESULTS_DIR, 'tracking_lkr10e0_001t5.jpg')
+    out_img = os.path.join(RESULTS_DIR, 'tracking_mlk.jpg')
 
     fig_track.savefig(out_img, dpi=120)
     plt.close(fig_track)

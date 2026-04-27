@@ -13,7 +13,7 @@ from peft import LoraConfig, get_peft_model
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Add utils directory to path
+#Add utils directory to path
 UTILS_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'cv26_lab2_part2_3')
 sys.path.insert(0, os.path.abspath(UTILS_DIR))
 from cv26_lab2_utils import read_video, svm_train_test
@@ -33,7 +33,8 @@ _X3D_STD  = torch.tensor([0.225, 0.225, 0.225]).view(1, 3, 1, 1, 1)
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3.1.1  Dataset loading
 # ═══════════════════════════════════════════════════════════════════════════════
-
+#in this function we read the training_videos.txt file to get the list of training videos
+# and then we create the train/test split based on that. We return the file paths and integer labels for both train and test sets.
 def create_train_test_ucf11(data_dir, classes, class_to_idx):
     """
     Build train/test split for UCF11 based on training_videos.txt.
@@ -47,7 +48,7 @@ def create_train_test_ucf11(data_dir, classes, class_to_idx):
     paths_test,  labels_test  = [], []
 
     for cls in classes:
-        cls_dir = os.path.join(data_dir, cls)
+        cls_dir = os.path.join(data_dir, cls) #we need the paths to read the videos later for feature extraction
         label   = class_to_idx[cls]
         for fname in sorted(os.listdir(cls_dir)):
             if not fname.endswith('.mpg'):
@@ -56,7 +57,7 @@ def create_train_test_ucf11(data_dir, classes, class_to_idx):
             if fname in train_set:
                 paths_train.append(fpath)
                 labels_train.append(label)
-            else:
+            else:#if the video is not in the training set, we add it to the test set
                 paths_test.append(fpath)
                 labels_test.append(label)
 
@@ -69,18 +70,18 @@ def create_train_test_ucf11(data_dir, classes, class_to_idx):
 
 def video_to_mobilenet_feat(fpath, extractor, preprocess):
     """
-    Load all frames of a video, extract MobileNet avgpool (576-d) per frame,
-    and return the temporal average → (576,).
+    extract firstly features for every frame from the feature extractor and then we average them to get a single feature vector per video.
     """
     video = read_video(fpath, gray=True, num_frames=-1)
     frame_feats = []
-    for t in range(video.shape[2]):
-        rgb    = np.stack([video[:, :, t]] * 3, axis=0)        # (3, H, W) uint8
+    for t in range(video.shape[2]): #for all frames in the video, stack it into a rgb tensor and pass it through the feature extractor to get the features for that frame, 
+    #then we average the features of all frames to get a single feature vector for the video.
+        rgb    = np.stack([video[:, :, t]] * 3, axis=0)        #(3, H, W) uint8
         tensor = preprocess(torch.from_numpy(rgb))
         with torch.no_grad():
             feat = extractor(tensor.unsqueeze(0))['avgpool'].squeeze().numpy()
-        frame_feats.append(feat)
-    return np.mean(frame_feats, axis=0)
+        frame_feats.append(feat) #list of (feat_dim,) arrays, one per frame
+    return np.mean(frame_feats, axis=0) #avg pooling across all frames
 
 
 def extract_mobilenet_features(paths, extractor, preprocess):
@@ -207,9 +208,12 @@ def video_to_x3d_clips(fpath, T=4, H=182, W=182, stride=4):
 
 def extract_x3d_features(paths, model, dev=torch.device('cpu')):
     """
+    in our implementation isntead of downsampling the video to 4 frames, we split the video into non-overlapping clips of 4 frames
+    and then we pass each clip through the model to get the features for that clip, 
+    then we average the features of all clips to get a single feature vector for the video.
     For each video: run every 4-frame clip through x3d_xs, capture the
     blocks[5].output_pool vector via a forward hook, then average over clips
-    → one feature vector per video.
+    one feature vector per video.
     """
     buf  = {}
     hook = model.blocks[5].output_pool.register_forward_hook(
@@ -243,8 +247,7 @@ def adapt_lora_x3d(model_x3d, paths_train, labels_train, feat_dim,
     so they flow back into the LoRA layers during training.
     Returns the adapted model (lora_x3d).
     """
-    # Pre-load center clip per video
-    print('  Pre-loading training clips...')
+    
     train_clips = []
     for path in paths_train:
         clips = video_to_x3d_clips(path)
@@ -268,8 +271,7 @@ def adapt_lora_x3d(model_x3d, paths_train, labels_train, feat_dim,
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     criterion = nn.CrossEntropyLoss()
 
-    # Hook captures blocks[5].output_pool output while keeping it in the
-    # computation graph so gradients flow into the LoRA layers
+
     buf = {}
     lora_x3d.blocks[5].output_pool.register_forward_hook(
         lambda _, __, out: buf.update({'feat': out})
@@ -296,10 +298,8 @@ def adapt_lora_x3d(model_x3d, paths_train, labels_train, feat_dim,
     return lora_x3d
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Classifiers
-# ═══════════════════════════════════════════════════════════════════════════════
 
+# Classifiers
 def run_svm(feat_train, labels_train, feat_test, labels_test, svm_type='linear'):
     """
     Wrapper around the provided svm_train_test utility.
@@ -307,10 +307,11 @@ def run_svm(feat_train, labels_train, feat_test, labels_test, svm_type='linear')
     Returns (accuracy, predictions, confusion_matrix).
     """
     acc, preds = svm_train_test(feat_train, labels_train, feat_test, labels_test,
-                                svm_type=svm_type)
+                                svm_type=svm_type) #use laready given function but it returns also the confusion matrices
     return acc, preds, confusion_matrix(labels_test, preds)
 
-
+#BONUS: we aso tested our features with a simple MLP classifier, we used AdamW optimizer with a cosine annealing learning rate scheduler and cross-entropy loss.
+# We trained the MLP for 300 epochs with a batch size of 32. The function returns the accuracy, predictions, and confusion matrix for the test set.
 def train_mlp(feat_train, labels_train, feat_test, labels_test,
               num_classes, device, epochs=300, batch_size=32):
     """
@@ -353,10 +354,7 @@ def train_mlp(feat_train, labels_train, feat_test, labels_test,
     return accuracy_score(labels_test, preds), preds, confusion_matrix(labels_test, preds)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Visualisation
-# ═══════════════════════════════════════════════════════════════════════════════
-
+#Visualisation
 def save_confusion_matrix(cm, classes, title, filepath):
     fig, ax = plt.subplots(figsize=(7, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
@@ -370,23 +368,21 @@ def save_confusion_matrix(cm, classes, title, filepath):
     print(f'  Saved: {filepath}')
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Experiment runner
-# ═══════════════════════════════════════════════════════════════════════════════
+#MAIN EXPERIMENT
 
 if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Device: {device}')
 
-    # ── 3.1.1  Load dataset ───────────────────────────────────────────────────
-    print('\n=== 3.1.1  Loading UCF11 dataset ===')
-    paths_train, labels_train, paths_test, labels_test = create_train_test_ucf11(
+    #  3.1.1  Load dataset 
+    print('\n3.1.1  Loading UCF11 dataset and creating train/test split')
+    paths_train, labels_train, paths_test, labels_test = create_train_test_ucf11(   #use helper function
         DATA_DIR, CLASSES, CLASS_TO_IDX
     )
-    labels_train_arr = np.array(labels_train)
+    labels_train_arr = np.array(labels_train) #get the labels
     labels_test_arr  = np.array(labels_test)
-
+   #just a small visualization of our dataset
     print(f'Classes ({len(CLASSES)}): {CLASSES}')
     print(f'Train: {len(paths_train)}  |  Test: {len(paths_test)}\n')
     print(f'  {"Class":<22} {"Train":>6} {"Test":>6} {"Total":>6}')
@@ -398,21 +394,20 @@ if __name__ == '__main__':
 
   
 
-    # ── 3.1.2  MobileNet frozen features ─────────────────────────────────────
-    print('\n=== 3.1.2  MobileNet_v3_small frozen features ===')
+    # 3.1.2  MobileNet frozen features
+    print('\n 3.1.2  MobileNet_v3_small frozen features ')
+    #   we load he pretrained MobileNet_v3_small model and we create a feature extractor 
     mn_weights    = MobileNet_V3_Small_Weights.IMAGENET1K_V1
     mobilenet     = mobilenet_v3_small(weights=mn_weights).eval()
     mn_preprocess = mn_weights.transforms()
     mn_extractor  = create_feature_extractor(mobilenet, return_nodes={'avgpool': 'avgpool'})
-
-    print('  Extracting train features...')
+    #we extract the training features with forzen mobelinet with avg from the features of every frame of a video as deiscribed in the function above
     feat_train_mn = extract_mobilenet_features(paths_train, mn_extractor, mn_preprocess)
-    print('  Extracting test features...')
+    #also for the test set
     feat_test_mn  = extract_mobilenet_features(paths_test,  mn_extractor, mn_preprocess)
-    print(f'  Feature shape: {feat_train_mn.shape}')
 
-    # ── 3.1.3  Frozen MobileNet — SVM vs MLP ─────────────────────────────────
-    print('\n=== 3.1.3  Frozen MobileNet + SVM ===')
+    # 3.1.3  Frozen MobileNet — SVM vs MLP
+    print('\n 3.1.3  Frozen MobileNet + SVM ')
     acc_mn_svm, _, cm_mn_svm = run_svm(feat_train_mn, labels_train_arr,
                                         feat_test_mn,  labels_test_arr)
     print(f'  Test accuracy: {acc_mn_svm * 100:.2f}%')
@@ -420,7 +415,7 @@ if __name__ == '__main__':
                           f'Frozen MobileNet + SVM  (acc={acc_mn_svm*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_frozen_mn_svm.png'))
 
-    print('\n=== 3.1.3  Frozen MobileNet + MLP ===')
+    print('\n BONUS: 3.1.3  Frozen MobileNet + MLP ')
     acc_mn_mlp, _, cm_mn_mlp = train_mlp(feat_train_mn, labels_train_arr,
                                           feat_test_mn,  labels_test_arr,
                                           len(CLASSES), device)
@@ -428,20 +423,19 @@ if __name__ == '__main__':
     save_confusion_matrix(cm_mn_mlp, CLASSES,
                           f'Frozen MobileNet + MLP  (acc={acc_mn_mlp*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_frozen_mn_mlp.png'))
-
-    # ── LoRA MobileNet — adaptation + features ────────────────────────────────
-    print('\n=== LoRA MobileNet — adaptation ===')
-    lora_mn = adapt_lora_mobilenet(mobilenet, mn_preprocess,
+    
+    #BONUS WE ADDED LORA DAPATATION TO OUR FEATURE EXTRACTOR FOR BETTER RESUTS BASED ON OUR DATASET
+    #LoRA MobileNet — adaptation + features 
+    print('\nLoRA MobileNet — adaptation')
+    lora_mn = adapt_lora_mobilenet(mobilenet, mn_preprocess, #USE HELPER FUNCTION
                                    paths_train, labels_train, device)
-
-    print('  Extracting LoRA MobileNet train features...')
+    #extract fetures from the trained backbone with lora
     feat_train_lora_mn = extract_lora_mobilenet_features(
         paths_train, lora_mn, mn_preprocess, device)
-    print('  Extracting LoRA MobileNet test features...')
     feat_test_lora_mn  = extract_lora_mobilenet_features(
         paths_test,  lora_mn, mn_preprocess, device)
 
-    print('\n=== LoRA MobileNet + SVM ===')
+    print('\nLoRA MobileNet + SVM')
     acc_lora_mn_svm, _, cm_lora_mn_svm = run_svm(feat_train_lora_mn, labels_train_arr,
                                                    feat_test_lora_mn,  labels_test_arr)
     print(f'  Test accuracy: {acc_lora_mn_svm * 100:.2f}%')
@@ -449,7 +443,7 @@ if __name__ == '__main__':
                           f'LoRA MobileNet + SVM  (acc={acc_lora_mn_svm*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_lora_mn_svm.png'))
 
-    print('\n=== LoRA MobileNet + MLP ===')
+    print('\n LoRA MobileNet + MLP')
     acc_lora_mn_mlp, _, cm_lora_mn_mlp = train_mlp(feat_train_lora_mn, labels_train_arr,
                                                      feat_test_lora_mn,  labels_test_arr,
                                                      len(CLASSES), device)
@@ -458,22 +452,21 @@ if __name__ == '__main__':
                           f'LoRA MobileNet + MLP  (acc={acc_lora_mn_mlp*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_lora_mn_mlp.png'))
 
-    # ── 3.2.1  Load x3d_xs ────────────────────────────────────────────────────
-    print('\n=== 3.2.1  Loading pretrained x3d_xs ===')
+    #  3.2.1  Load x3d_xs 
+    print('\n3.2.1  Loading pretrained x3d_xs model')
+    #we load the pretrained model for 3d video processing
     model_x3d = torch.hub.load(
         'facebookresearch/pytorchvideo', 'x3d_xs', pretrained=True
     )
     model_x3d.eval()
 
-    # ── 3.2.3  Frozen x3d_xs features ────────────────────────────────────────
-    print('\n=== 3.2.3  Frozen x3d_xs features ===')
-    print('  Extracting train features...')
+    # 3.2.3  Frozen x3d_xs features 
+    print('\n3.2.3  Frozen x3d_xs features ')
+    #extract features for every 4 frames of the video , do these for all the frames and finalyy take the avg pooling of all the features to take the representation of the video
     feat_train_x3d = extract_x3d_features(paths_train, model_x3d)
-    print('  Extracting test features...')
     feat_test_x3d  = extract_x3d_features(paths_test,  model_x3d)
-    print(f'  Feature shape: {feat_train_x3d.shape}')
 
-    print('\n=== Frozen x3d_xs + SVM ===')
+    print('\n3.2.3 Frozen x3d_xs + SVM ')
     acc_x3d_svm, _, cm_x3d_svm = run_svm(feat_train_x3d, labels_train_arr,
                                            feat_test_x3d,  labels_test_arr)
     print(f'  Test accuracy: {acc_x3d_svm * 100:.2f}%')
@@ -481,7 +474,7 @@ if __name__ == '__main__':
                           f'Frozen x3d_xs + SVM  (acc={acc_x3d_svm*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_frozen_x3d_svm.png'))
 
-    print('\n=== Frozen x3d_xs + MLP ===')
+    print('\n BONUS: 3.2.3 Frozen x3d_xs + MLP ')
     acc_x3d_mlp, _, cm_x3d_mlp = train_mlp(feat_train_x3d, labels_train_arr,
                                              feat_test_x3d,  labels_test_arr,
                                              len(CLASSES), device)
@@ -490,18 +483,17 @@ if __name__ == '__main__':
                           f'Frozen x3d_xs + MLP  (acc={acc_x3d_mlp*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_frozen_x3d_mlp.png'))
 
-    # ── LoRA x3d_xs — adaptation + features ──────────────────────────────────
-    print('\n=== LoRA x3d_xs — adaptation ===')
+    # BONUS :LoRA x3d_xs — adaptation + features 
+    print('\n BONUS: LoRA x3d_xs — adaptation')
     x3d_feat_dim = feat_train_x3d.shape[1]
+    #train lora adaptedto the x3d model
     lora_x3d = adapt_lora_x3d(model_x3d, paths_train, labels_train,
                                x3d_feat_dim, device)
-
-    print('  Extracting LoRA x3d train features...')
+    #extract features from the lora adapted trained backbone
     feat_train_lora_x3d = extract_x3d_features(paths_train, lora_x3d, dev=device)
-    print('  Extracting LoRA x3d test features...')
     feat_test_lora_x3d  = extract_x3d_features(paths_test,  lora_x3d, dev=device)
 
-    print('\n=== LoRA x3d_xs + SVM ===')
+    print('\nLoRA x3d_xs + SVM ')
     acc_lora_x3d_svm, _, cm_lora_x3d_svm = run_svm(feat_train_lora_x3d, labels_train_arr,
                                                      feat_test_lora_x3d,  labels_test_arr)
     print(f'  Test accuracy: {acc_lora_x3d_svm * 100:.2f}%')
@@ -509,7 +501,7 @@ if __name__ == '__main__':
                           f'LoRA x3d_xs + SVM  (acc={acc_lora_x3d_svm*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_lora_x3d_svm.png'))
 
-    print('\n=== LoRA x3d_xs + MLP ===')
+    print('\n  LoRA x3d_xs + MLP ')
     acc_lora_x3d_mlp, _, cm_lora_x3d_mlp = train_mlp(feat_train_lora_x3d, labels_train_arr,
                                                        feat_test_lora_x3d,  labels_test_arr,
                                                        len(CLASSES), device)
@@ -518,7 +510,7 @@ if __name__ == '__main__':
                           f'LoRA x3d_xs + MLP  (acc={acc_lora_x3d_mlp*100:.1f}%)',
                           os.path.join(RESULTS_DIR, 'cm_lora_x3d_mlp.png'))
 
-    # ── 3.2.4  Comparison ─────────────────────────────────────────────────────
+    # 3.2.4  Comparison
     results = [
         # (label,               acc_svm,          cm_svm,          acc_mlp,           cm_mlp)
         ('Frozen MobileNet', acc_mn_svm,       cm_mn_svm,       acc_mn_mlp,       cm_mn_mlp),
@@ -527,7 +519,7 @@ if __name__ == '__main__':
         ('LoRA x3d_xs',      acc_lora_x3d_svm, cm_lora_x3d_svm, acc_lora_x3d_mlp, cm_lora_x3d_mlp),
     ]
 
-    print('\n=== 3.2.4  Comparison ===')
+    print('\n3.2.4  Comparison')
     print(f'\n  {"Method":<22} {"SVM":>10} {"MLP":>10}')
     print(f'  {"-"*22} {"-"*10} {"-"*10}')
     for name, a_svm, _, a_mlp, __ in results:
