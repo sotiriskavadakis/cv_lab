@@ -485,16 +485,7 @@ if __name__ == '__main__':
                     dx_box, dy_box = -dx_box, -dy_box #each box displacement
                     box_state[name][0] += dx_box #box new position with the computed displacement
                     box_state[name][1] += dy_box
-                    if name == 'left_hand' and idx >= NUM_FRAMES - 3:
-                        print(
-                            f'[debug] frame {idx+1} -> {idx+2} left_hand '
-                            f'dx_box={dx_box:.4f} dy_box={dy_box:.4f} '
-                            f'new_box=({box_state[name][0]:.2f}, {box_state[name][1]:.2f}, '
-                            f'{box_state[name][2]:.2f}, {box_state[name][3]:.2f})'
-                        )
-                elif name == 'left_hand' and idx >= NUM_FRAMES - 3:
-                    print(f'[debug] frame {idx+1} -> {idx+2} left_hand no valid features, box unchanged')
-
+                    
     writer.release()
     print(f'  saved {os.path.basename(out_vid)}')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_tvl.jpg')
