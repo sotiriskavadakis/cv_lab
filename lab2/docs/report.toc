@@ -1,38 +1,39 @@
-\xpg@aux {}{greek}
+\xpginauxfiletrue 
+\selectlanguage *{greek}
 \contentsline {section}{\numberline {1}Παρακολούθηση Προσώπου και Χεριών με Χρήση της Μεθόδου Οπτικής Ροής των Lucas-Kanade}{3}{section.1}%
 \contentsline {subsection}{\numberline {1.1}Υλοποίηση του Αλγορίθμου των Lucas-Kanade}{3}{subsection.1.1}%
 \contentsline {subsection}{\numberline {1.2}Υπολογισμός της Μετατόπισης των Παραθύρων από τα Διανύσματα Οπτικής Ροής}{13}{subsection.1.2}%
 \contentsline {subsection}{\numberline {1.3}Πολυ-Κλιμακωτός Υπολογισμός Οπτικής Ροής}{20}{subsection.1.3}%
-\contentsline {section}{\numberline {2}Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}{21}{section.2}%
-\contentsline {subsection}{\numberline {2.1}Χωρο-χρονικά Σημεία Ενδιαφέροντος}{21}{subsection.2.1}%
-\contentsline {subsubsection}{\numberline {2.1.1}Ανιχνευτής Harris3D}{21}{subsubsection.2.1.1}%
-\contentsline {subsubsection}{\numberline {2.1.2}Ανιχνευτής Gabor}{23}{subsubsection.2.1.2}%
-\contentsline {subsubsection}{\numberline {2.1.3}Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}{24}{subsubsection.2.1.3}%
-\contentsline {subsubsection}{\numberline {2.1.4}Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}{24}{subsubsection.2.1.4}%
-\contentsline {subsection}{\numberline {2.2}Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}{28}{subsection.2.2}%
-\contentsline {subsubsection}{\numberline {2.2.1}Υπολογισμός Gradient και Οπτικής Ροής}{29}{subsubsection.2.2.1}%
-\contentsline {subsubsection}{\numberline {2.2.2}Εξαγωγή HOG/HOF Περιγραφητών}{29}{subsubsection.2.2.2}%
-\contentsline {subsection}{\numberline {2.3}Κατασκευή Bag of Visual Words και Ταξινόμηση με SVM}{30}{subsection.2.3}%
-\contentsline {subsubsection}{\numberline {2.3.1}Διαχωρισμός Συνόλου Δεδομένων}{30}{subsubsection.2.3.1}%
-\contentsline {subsubsection}{\numberline {2.3.2}Κατασκευή Λεξιλογίου visual words}{31}{subsubsection.2.3.2}%
-\contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{31}{subsubsection.2.3.3}%
-\contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{32}{subsubsection.2.3.4}%
-\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{35}{section.3}%
-\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{35}{subsection.3.1}%
-\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{35}{subsubsection.3.1.1}%
-\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{35}{subsubsection.3.1.2}%
-\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{36}{subsubsection.3.1.3}%
-\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{36}{subsection.3.2}%
-\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{36}{subsubsection.3.2.1}%
-\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{37}{subsubsection.3.2.2}%
-\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{38}{subsubsection.3.2.3}%
-\contentsline {subparagraph}{Frozen MobileNet + SVM (98.8\% Ακρίβεια)}{39}{subparagraph*.42}%
-\contentsline {subparagraph}{Frozen x3d\_xs + SVM (99.4\% Ακρίβεια)}{40}{subparagraph*.44}%
-\contentsline {subparagraph}{LoRA MobileNet + SVM (98.8\% Ακρίβεια)}{40}{subparagraph*.46}%
-\contentsline {subparagraph}{LoRA x3d\_xs + SVM (99.4\% Ακρίβεια)}{41}{subparagraph*.48}%
-\contentsline {subparagraph}{MLP Ταξινόμηση}{42}{subparagraph*.50}%
-\contentsline {subparagraph}{Frozen x3d\_xs + MLP (98.8\% Ακρίβεια)}{42}{subparagraph*.52}%
-\contentsline {subparagraph}{LoRA MobileNet + MLP (97.6\% Ακρίβεια)}{43}{subparagraph*.54}%
-\contentsline {subparagraph}{LoRA x3d\_xs + MLP (99.4\% Ακρίβεια)}{44}{subparagraph*.56}%
-\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{44}{subsubsection.3.2.4}%
+\contentsline {section}{\numberline {2}Εντοπισμός Χωρο-χρονικών Σημείων Ενδιαφέροντος και Εξαγωγή Χαρακτηριστικών σε Βίντεο Ανθρωπίνων Δράσεων}{23}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Χωρο-χρονικά Σημεία Ενδιαφέροντος}{23}{subsection.2.1}%
+\contentsline {subsubsection}{\numberline {2.1.1}Ανιχνευτής Harris3D}{23}{subsubsection.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.1.2}Ανιχνευτής Gabor}{25}{subsubsection.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.1.3}Απόρριψη Ομαλών Περιοχών και Επιλογή Σημείων}{26}{subsubsection.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.1.4}Απεικόνιση Σημείων Ενδιαφέροντος και Σχολιασμός}{26}{subsubsection.2.1.4}%
+\contentsline {subsection}{\numberline {2.2}Χωρο-χρονικοί Ιστογραφικοί Περιγραφητές}{30}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Υπολογισμός Gradient και Οπτικής Ροής}{31}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Εξαγωγή HOG/HOF Περιγραφητών}{31}{subsubsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.3}Κατασκευή Bag of Visual Words και Ταξινόμηση με SVM}{32}{subsection.2.3}%
+\contentsline {subsubsection}{\numberline {2.3.1}Διαχωρισμός Συνόλου Δεδομένων}{32}{subsubsection.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.3.2}Κατασκευή Λεξιλογίου visual words}{33}{subsubsection.2.3.2}%
+\contentsline {subsubsection}{\numberline {2.3.3}Ταξινόμηση με SVM}{33}{subsubsection.2.3.3}%
+\contentsline {subsubsection}{\numberline {2.3.4}Πειραματισμοί και Σχολιασμός}{34}{subsubsection.2.3.4}%
+\contentsline {section}{\numberline {3}Ταξινόμηση Βίντεο με Χρήση Προεκπαιδευμένων Βαθιών Νευρωνικών Δικτύων}{36}{section.3}%
+\contentsline {subsection}{\numberline {3.1}2D Χαρακτηριστικά με MobileNet}{36}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}Φόρτωση Βίντεο UCF11}{36}{subsubsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.2}Εξαγωγή Χαρακτηριστικών με MobileNet\_v3\_small}{37}{subsubsection.3.1.2}%
+\contentsline {subsubsection}{\numberline {3.1.3}Ταξινόμηση με SVM}{37}{subsubsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.2}3D Χαρακτηριστικά με x3d\_xs}{37}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Φόρτωση Μοντέλου x3d\_xs}{38}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Εξαγωγή Χαρακτηριστικών και Προετοιμασία Δεδομένων}{38}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Ταξινόμηση και Confusion Matrix}{39}{subsubsection.3.2.3}%
+\contentsline {subparagraph}{Frozen MobileNet + SVM (98.8\% Ακρίβεια)}{40}{subparagraph*.44}%
+\contentsline {subparagraph}{Frozen x3d\_xs + SVM (99.4\% Ακρίβεια)}{41}{subparagraph*.46}%
+\contentsline {subparagraph}{LoRA MobileNet + SVM (98.8\% Ακρίβεια)}{41}{subparagraph*.48}%
+\contentsline {subparagraph}{LoRA x3d\_xs + SVM (99.4\% Ακρίβεια)}{42}{subparagraph*.50}%
+\contentsline {subparagraph}{MLP Ταξινόμηση}{43}{subparagraph*.52}%
+\contentsline {subparagraph}{Frozen x3d\_xs + MLP (98.8\% Ακρίβεια)}{43}{subparagraph*.54}%
+\contentsline {subparagraph}{LoRA MobileNet + MLP (97.6\% Ακρίβεια)}{44}{subparagraph*.56}%
+\contentsline {subparagraph}{LoRA x3d\_xs + MLP (99.4\% Ακρίβεια)}{45}{subparagraph*.58}%
+\contentsline {subsubsection}{\numberline {3.2.4}Σύγκριση 2D και 3D Προσεγγίσεων}{45}{subsubsection.3.2.4}%
 \xpginauxfilefalse 

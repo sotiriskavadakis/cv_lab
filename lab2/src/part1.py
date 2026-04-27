@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import os
+import time
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -61,7 +62,7 @@ def lk(I1, I2, features, rho, epsilon, d_x0, d_y0):
         d_x_img = np.full((H, W), float(d_x0))
         d_y_img = np.full((H, W), float(d_y0))
     #we perform the iterations of the Lucas-Kanade algorithm , 150 iterations were enough for convergence in our tests
-    for _ in range(150):
+    for reps in range(200):
         
         # creates the shifted coordinates of the columns and rows by adding the current displacemtn and making it to a 1D array
         shifted_cols = np.ravel(x_0 + d_x_img)
@@ -110,6 +111,8 @@ def lk(I1, I2, features, rho, epsilon, d_x0, d_y0):
         max_update = np.max(np.sqrt(u_x_features**2 + u_y_features**2))
         if max_update < threshold:
             break 
+    reps=reps+1 #we add 1 to the number of iterations because we start counting from 0
+    print(f'  LK converged in {reps} iterations')
     #after convergence we return the final displacements for the features by indexing the final d_x_img and d_y_img 
     #at the feature locations
     d_x=d_x_img[fy, fx]
@@ -117,8 +120,8 @@ def lk(I1, I2, features, rho, epsilon, d_x0, d_y0):
     #we return the final displacements for the features , but these are not the real one we will have to take the negative of them 
     #since they represent the movement from I2 to I1 since as we will se in the main code
     #we compute the features in the I2 image while we want the movement from I1 to I2 for the tracking of the objects in the video
-    return d_x, d_y , d_x_img, d_y_img #we return also the dense dispacement for the multiscale version as we have to put the dense result as initialization to the next finr level
-
+    return d_x, d_y , d_x_img, d_y_img , reps #we return also the dense dispacement for the multiscale version as we have to put the dense result as initialization to the next finr level
+    #also reps forthe analysis time of convergence of the algorithm
 
 def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
     """
@@ -154,6 +157,7 @@ def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
     scale_factor = 2 ** (num_scales - 1)
     d_x_map = np.full((H_c, W_c), d_x0 / scale_factor)#so we create a map of displacementes for all pixels at the coarest level
     d_y_map = np.full((H_c, W_c), d_y0 / scale_factor)
+    reps_total = 0
 
     #now we start the coarse to fine refinement
     #we begin from the coarsest level and we move towards the original resolution
@@ -173,13 +177,14 @@ def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
         #we now run the simple lk at the current scale
         #instead of starting from zero each time we pass as initial condition the dense displacement map computed from the coarser level
         #this is the key idea of multiscale lucas kanade because the coarse level gives a good initial guess for the finer level
-        dx_level, dy_level , d_x_map, d_y_map = lk( #we return both the dense map in order to use it as initialization to the next level and the feature displacements at the current level that we need to compute for the motion of the object
+        dx_level, dy_level , d_x_map, d_y_map , reps = lk( #we return both the dense map in order to use it as initialization to the next level and the feature displacements at the current level that we need to compute for the motion of the object
             I1_level, I2_level,
             features_level,
             rho, epsilon,
             d_x_map, d_y_map      # 2D maps that is we built lk so that it can handels 2d initialization
         )
-
+        reps_total += reps
+        print(f'  Level {level}: LK converged in {reps} iterations')
         #if we are not yet at the finest level we have to move to the next finer image
         #in order to do that we upsample the dense displacement maps and then multiply by 2
         #because one pixel motion in the coarse image corresponds to two pixels motion in the next finer image
@@ -187,31 +192,31 @@ def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
             H_next, W_next = pyramid1[level - 1].shape[:2]#we get the dimensions of the next finer image
 
             #build the coordinates of the next finer image
-            # x_next, y_next = np.meshgrid(np.arange(W_next), np.arange(H_next))
-            # #map these coordinates back to the coarse grid in order to interpolate the displacement maps
-            # x_coarse = x_next / 2.0
-            # y_coarse = y_next / 2.0
+            x_next, y_next = np.meshgrid(np.arange(W_next), np.arange(H_next))
+            #map these coordinates back to the coarse grid in order to interpolate the displacement maps
+            x_coarse = x_next / 2.0
+            y_coarse = y_next / 2.0
 
-            # #interpolate the dense dx map from the coarse level to the finer level
-            # d_x_map = map_coordinates(
-            #     d_x_map,
-            #     [np.ravel(y_coarse), np.ravel(x_coarse)],
-            #     order=1, mode='nearest'
-            # ).reshape(H_next, W_next)#map to next level
+            #interpolate the dense dx map from the coarse level to the finer level
+            d_x_map = map_coordinates(
+                d_x_map,
+                [np.ravel(y_coarse), np.ravel(x_coarse)],
+                order=1, mode='nearest'
+            ).reshape(H_next, W_next)#map to next level
 
-            # #interpolate similarly the dense dy map
-            # d_y_map = map_coordinates(
-            #     d_y_map,
-            #     [np.ravel(y_coarse), np.ravel(x_coarse)],
-            #     order=1, mode='nearest'
-            # ).reshape(H_next, W_next)
+            #interpolate similarly the dense dy map
+            d_y_map = map_coordinates(
+                d_y_map,
+                [np.ravel(y_coarse), np.ravel(x_coarse)],
+                order=1, mode='nearest'
+            ).reshape(H_next, W_next)
      
-            # #after interpolation we multiply by 2 to express the motion in the coordinate system of the finer level
-            # d_x_map *= 2.0
-            # d_y_map *= 2.0
+            #after interpolation we multiply by 2 to express the motion in the coordinate system of the finer level
+            d_x_map *= 2.0
+            d_y_map *= 2.0
 
-            d_x_map = cv2.resize(d_x_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
-            d_y_map = cv2.resize(d_y_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
+            #d_x_map = cv2.resize(d_x_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
+            #d_y_map = cv2.resize(d_y_map, (W_next, H_next), interpolation=cv2.INTER_LINEAR) * 2.0
         else:
             #at the finest level for completeness we store the final per-feature displacements back into the dense maps
             H_l, W_l = I1_level.shape[:2]
@@ -221,7 +226,8 @@ def lk_multiscale(I1, I2, features, rho, epsilon, d_x0, d_y0, num_scales):
             d_y_map[fj, fi] = dy_level
 
     #finally we return the displacements of the features at the finest original scale
-    return dx_level, dy_level
+    print(f'  MLK total inner LK iterations = {reps_total}')
+    return dx_level, dy_level, reps_total
 
 #ENERGY MASK+MEDIAN APPROACH FOR DISPLACEMENT COMPUTATION
 def displ(d_x, d_y):
@@ -278,10 +284,10 @@ if __name__ == '__main__':
 
         features = pts.reshape(-1, 2)        #reshape for our lk function
 
-        d_x_lk, d_y_lk, _, _ = lk(crop_I1, crop_I2, features, #dx dy of lk
+        d_x_lk, d_y_lk, _, _, _ = lk(crop_I1, crop_I2, features, #dx dy of lk
                                rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
         displacement_x, displacement_y = displ(-d_x_lk, -d_y_lk)  #real displacements are the negtive of the ones computed because  we find the featres in I2
-        d_x_mlk, d_y_mlk = lk_multiscale(crop_I1, crop_I2, features, #same for multiscale lk
+        d_x_mlk, d_y_mlk, _ = lk_multiscale(crop_I1, crop_I2, features, #same for multiscale lk
                                         rho=5, epsilon=0.001, d_x0=0.0, d_y0=0.0, num_scales=3)
         displacement_x_mlk, displacement_y_mlk = displ(-d_x_mlk, -d_y_mlk)
     
@@ -365,7 +371,7 @@ if __name__ == '__main__':
     #         axes[row, 2].axis('off')
     #         if pts is not None:
     #             features = pts.reshape(-1, 2)
-    #             d_x, d_y, _, _ = lk(crop1, crop2, features,
+    #             d_x, d_y, _, _, _ = lk(crop1, crop2, features,
     #                           rho=10, epsilon=0.001, d_x0=0.0, d_y0=0.0)
     #             axes[row, 2].quiver( #visualiation with quiver plot
     #                 features[:, 0], features[:, 1],
@@ -410,7 +416,7 @@ if __name__ == '__main__':
     sample = cv2.imread(os.path.join(DATA_DIR, frame_files[0]))
     H_vid, W_vid = sample.shape[:2]
     
-    out_vid = os.path.join(RESULTS_DIR, 'tracking_mlk.mp4')
+    out_vid = os.path.join(RESULTS_DIR, 'tracking_lktimetest.mp4')
 
     writer = cv2.VideoWriter(#synthesize the frames to a video
         out_vid,
@@ -424,6 +430,8 @@ if __name__ == '__main__':
     )
     fig_track.suptitle('Tracking: face + hands', fontsize=11)
     tvl1_estimator = cv2.optflow.DualTVL1OpticalFlow_create(nscales=1)
+    tracking_start = time.perf_counter()
+    total_iterations = 0
     for idx, fname in enumerate(frame_files):
         frame_bgr  = cv2.imread(os.path.join(DATA_DIR, fname))
         frame_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
@@ -458,14 +466,12 @@ if __name__ == '__main__':
 
                 pts = cv2.goodFeaturesToTrack(crop_I2, maxCorners=200,
                                               qualityLevel=0.01, minDistance=5)
-                if name == 'left_hand' and idx >= NUM_FRAMES - 3:
-                    num_pts = 0 if pts is None else len(pts)
-                    print(f'[debug] frame {idx+1} -> {idx+2} left_hand features: {num_pts}')
+                
                 if pts is not None and len(pts) > 0:
                     features = pts.reshape(-1, 2)
 
                     #SIPLE SCALE LUCAS-KANADE APPROACH
-                    #d_x, d_y, _, _ = lk(crop_I1, crop_I2, features, rho=5, epsilon=0.001, d_x0=0.0, d_y0=0.0)
+                    #d_x, d_y, _, _, reps_total = lk(crop_I1, crop_I2, features, rho=5, epsilon=0.001, d_x0=0.0, d_y0=0.0)
 
                     #TVL 
                     #flow = tvl1_estimator.calc(crop_I2, crop_I1, None)  # (H, W, 2)
@@ -480,7 +486,8 @@ if __name__ == '__main__':
                     # d_y = flow[fy, fx, 1]   # (N,)
 
                     #MULTI-SCALE LUCAS-KANADE APPROACH
-                    d_x, d_y = lk_multiscale(crop_I1, crop_I2, features, rho=5, epsilon=0.01, d_x0=0.0, d_y0=0.0, num_scales=3)
+                    d_x, d_y, reps_total = lk_multiscale(crop_I1, crop_I2, features, rho=5, epsilon=0.01, d_x0=0.0, d_y0=0.0, num_scales=3)
+                    total_iterations += reps_total
                     dx_box, dy_box = displ(d_x, d_y)
                     dx_box, dy_box = -dx_box, -dy_box #each box displacement
                     box_state[name][0] += dx_box #box new position with the computed displacement
@@ -490,10 +497,17 @@ if __name__ == '__main__':
     print(f'  saved {os.path.basename(out_vid)}')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_tvl.jpg')
     #out_img = os.path.join(RESULTS_DIR, 'tracking_uni.jpg')
-    out_img = os.path.join(RESULTS_DIR, 'tracking_mlk.jpg')
+    out_img = os.path.join(RESULTS_DIR, 'tracking_lktimetest.jpg')
 
     fig_track.savefig(out_img, dpi=120)
     plt.close(fig_track)
     print(f'  saved {os.path.basename(out_img)}')
+    tracking_elapsed = time.perf_counter() - tracking_start
+
+    print(f'  Total  iterations in tracking = {total_iterations}')
+    print(f'  Tracking elapsed time = {tracking_elapsed:.3f} s')
+    print(f'  Mean iterations per frame in tracking = {total_iterations / NUM_FRAMES:.2f}')
+    print(f'  Mean tracking elapsed time = {tracking_elapsed / NUM_FRAMES:.3f} s')
+
 
     print(f'\nTracking done — results in {os.path.abspath(RESULTS_DIR)}')
