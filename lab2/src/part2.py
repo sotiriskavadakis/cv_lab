@@ -191,11 +191,11 @@ def _save_gif(video, pts, gif_path): # helper function to save a GIF of the dete
     frames[0].save(gif_path, save_all=True, append_images=frames[1:], duration=40, loop=0)
     shutil.rmtree(tmpdir) 
 
-def _save_png(src, fname):
+def _save_png(src, fname): # helper func to save png file in both results and pictures dirs
     for d in [results_dir, pictures_dir]:
         shutil.copy(src, os.path.join(d, fname))
 
-def _savefig_png(fname):
+def _savefig_png(fname): # helper func to save matplotlib fig as PNG in res + pictures dirs
     path = os.path.join(results_dir, fname)
     plt.savefig(path, dpi=150, bbox_inches='tight')
     shutil.copy(path, os.path.join(pictures_dir, fname))
@@ -312,24 +312,24 @@ experiments = [
 
 loaded = {}  # cache: key -> descriptors dict
 
-def _get_descriptors(name, func, kw):
+def _get_descriptors(name, func, kw): # compute decriptors for all videos with caching
     key = (name, kw['sigma'], kw['tau'], kw['thresh'], kw['top_n'])
     if key in loaded:
         return loaded[key]
-    path = os.path.join(cache_dir, f"desc_{name}_s{kw['sigma']}_t{kw['tau']}_thr{kw['thresh']}_n{kw['top_n']}.pkl")
+    path = os.path.join(cache_dir, f"desc_{name}_s{kw['sigma']}_t{kw['tau']}_thr{kw['thresh']}_n{kw['top_n']}.pkl") 
     if os.path.exists(path):
         with open(path, 'rb') as fh:
             loaded[key] = pickle.load(fh)
         return loaded[key]
     print(f"  Computing {name} descriptors...")
     desc_train, train_labels, desc_test, test_labels = [], [], [], []
-    for action, n, vpath in train_videos:
+    for action, n, vpath in train_videos: # for each training video read descriptors 
         vid = read_video(vpath, gray=True, num_frames=100)
         pts, _ = func(vid, **kw)
         desc_train.append(compute_descriptors(vid, pts))
         train_labels.append(label_map[action])
         print(f"    train {n}: {len(pts)} pts")
-    for action, n, vpath in test_videos:
+    for action, n, vpath in test_videos: # for each test video read the descriptors 
         vid = read_video(vpath, gray=True, num_frames=100)
         pts, _ = func(vid, **kw)
         desc_test.append(compute_descriptors(vid, pts))
@@ -344,15 +344,15 @@ print("-" * 65)
 acc_rows = []
 
 for det_name, det_func, det_kw, desc_type, K in experiments:
-    c = _get_descriptors(det_name, det_func, det_kw)
+    c = _get_descriptors(det_name, det_func, det_kw) # use descriptors from cache 
     tr, ts = c['desc_train'], c['desc_test']
     train_labels = np.array(c['train_labels'])
     test_labels  = np.array(c['test_labels'])
 
     if desc_type == 'HOG':
-        tr, ts = [d[:, :72] for d in tr], [d[:, :72] for d in ts]
+        tr, ts = [d[:, :72] for d in tr], [d[:, :72] for d in ts] # take first 72 dims for HOG
     elif desc_type == 'HOF':
-        tr, ts = [d[:, 72:] for d in tr], [d[:, 72:] for d in ts]
+        tr, ts = [d[:, 72:] for d in tr], [d[:, 72:] for d in ts] # take last 72 dims slices for HOF
 
     total_pts = sum(len(d) for d in tr)
     sigma, tau, thresh, top_n = det_kw['sigma'], det_kw['tau'], det_kw['thresh'], det_kw['top_n']
@@ -360,12 +360,12 @@ for det_name, det_func, det_kw, desc_type, K in experiments:
         print(f"{det_name:<15} {sigma:<4} {tau:<5} {thresh:<6} {top_n:<6} {desc_type:<10} {K:<6} skipped ({total_pts} pts)")
         continue
 
-    bow_tr, bow_ts = bag_of_words(tr, ts, num_centers=K)
-    acc, _ = svm_train_test(bow_tr, train_labels, bow_ts, test_labels)
+    bow_tr, bow_ts = bag_of_words(tr, ts, num_centers=K) # compute the BoVW histograms for train and test sets with K centers
+    acc, _ = svm_train_test(bow_tr, train_labels, bow_ts, test_labels) # train SVM on train BoVW and evaluate on test BoVW
     print(f"{det_name:<15} {sigma:<4} {tau:<5} {thresh:<6} {top_n:<6} {desc_type:<10} {K:<6} {acc:.2%}")
     acc_rows.append((det_name, det_kw, desc_type, K, acc))
 
-print("\n=== Best accuracy + GIFs per detector ===")
+print("\n=== Best accuracy + GIFs per detector ===") # right here we pick the best accuracy for each detector and show the corresponding GIFs
 det_func_map = {'harris': harris_detector, 'gabor': gabor_detector}
 for name in ['harris', 'gabor']:
     rows = [r for r in acc_rows if r[0] == name]
